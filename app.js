@@ -15,7 +15,11 @@ const createAccountButton = document.getElementById("createAccountButton");
 const currentUser = document.getElementById("currentUser");
 
 const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+
 const signupUsername = document.getElementById("signupUsername");
+const signupEmail = document.getElementById("signupEmail");
+const signupPassword = document.getElementById("signupPassword");
 
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
@@ -41,7 +45,7 @@ function showPage(page) {
 
 
 // =========================
-// LANDING PAGE
+// LANDING
 // =========================
 
 loginButton.addEventListener("click", () => {
@@ -67,73 +71,175 @@ backFromSignup.addEventListener("click", () => {
 
 
 // =========================
-// LOGIN PROTOTYPE
+// REAL LOGIN
 // =========================
 
-enterChatButton.addEventListener("click", () => {
+enterChatButton.addEventListener("click", async () => {
 
     const username = loginUsername.value.trim();
+    const password = loginPassword.value;
 
-    if (username === "") {
-        alert("Please enter a username.");
+    if (!username || !password) {
+        alert("Enter your username and password.");
         return;
     }
 
-    currentUser.textContent = username;
+    enterChatButton.disabled = true;
+    enterChatButton.textContent = "Logging in...";
 
-    showPage(chatPage);
+    try {
+
+        const response = await fetch("/api/login", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || "Login failed.");
+            return;
+        }
+
+        currentUser.textContent = data.user.username;
+
+        showPage(chatPage);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to connect to SklChat.");
+
+    } finally {
+
+        enterChatButton.disabled = false;
+        enterChatButton.textContent = "Log In";
+
+    }
+
 });
 
 
 // =========================
-// CREATE ACCOUNT PROTOTYPE
+// REAL REGISTRATION
 // =========================
 
-createAccountButton.addEventListener("click", () => {
+createAccountButton.addEventListener("click", async () => {
 
     const username = signupUsername.value.trim();
+    const email = signupEmail.value.trim();
+    const password = signupPassword.value;
 
-    if (username === "") {
-        alert("Please choose a username.");
+    if (!username || !email || !password) {
+        alert("Please fill in every field.");
         return;
     }
 
-    currentUser.textContent = username;
+    if (password.length < 8) {
+        alert("Password must be at least 8 characters.");
+        return;
+    }
 
-    showPage(chatPage);
+    createAccountButton.disabled = true;
+    createAccountButton.textContent = "Creating account...";
+
+    try {
+
+        const response = await fetch("/api/register", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+                username,
+                email,
+                password
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            alert(data.error || "Registration failed.");
+            return;
+        }
+
+        currentUser.textContent = data.user.username;
+
+        alert("Account created successfully!");
+
+        showPage(chatPage);
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to connect to SklChat.");
+
+    } finally {
+
+        createAccountButton.disabled = false;
+        createAccountButton.textContent = "Create Account";
+
+    }
+
 });
 
 
 // =========================
-// SEND MESSAGES
+// MESSAGES
 // =========================
 
 function sendMessage() {
 
     const text = messageInput.value.trim();
 
-    if (text === "") {
+    if (!text) {
         return;
     }
 
     const message = document.createElement("div");
+
     message.className = "message";
 
     const avatar = document.createElement("div");
+
     avatar.className = "avatar";
+
     avatar.textContent =
-        currentUser.textContent.charAt(0).toUpperCase();
+        currentUser.textContent
+            .charAt(0)
+            .toUpperCase();
 
     const content = document.createElement("div");
 
     const username = document.createElement("strong");
-    username.textContent = currentUser.textContent;
+
+    username.textContent =
+        currentUser.textContent;
 
     const role = document.createElement("span");
+
     role.className = "role";
     role.textContent = "Member";
 
     const messageText = document.createElement("p");
+
     messageText.textContent = text;
 
     content.appendChild(username);
@@ -147,14 +253,15 @@ function sendMessage() {
 
     messageInput.value = "";
 
-    messages.scrollTop = messages.scrollHeight;
+    messages.scrollTop =
+        messages.scrollHeight;
 }
 
 
 sendButton.addEventListener("click", sendMessage);
 
 
-messageInput.addEventListener("keydown", (event) => {
+messageInput.addEventListener("keydown", event => {
 
     if (event.key === "Enter") {
         sendMessage();
@@ -164,7 +271,7 @@ messageInput.addEventListener("keydown", (event) => {
 
 
 // =========================
-// CHAT ROOMS
+// ROOMS
 // =========================
 
 const roomInfo = {
@@ -197,17 +304,20 @@ rooms.forEach(room => {
 
         room.classList.add("active");
 
-        const info = roomInfo[room.textContent.trim()];
+        const info =
+            roomInfo[room.textContent.trim()];
 
         if (info) {
 
-            chatTitle.textContent = info.title;
+            chatTitle.textContent =
+                info.title;
 
             chatDescription.textContent =
                 info.description;
 
             messageInput.placeholder =
                 `Message ${room.textContent.trim()}...`;
+
         }
 
     });
@@ -216,7 +326,7 @@ rooms.forEach(room => {
 
 
 // =========================
-// START ON LANDING PAGE
+// START
 // =========================
 
 showPage(landingPage);
