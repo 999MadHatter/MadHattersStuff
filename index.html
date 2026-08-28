@@ -1,11 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SklChat</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -15,7 +13,7 @@
         <div class="logo">💬 SklChat</div>
 
         <div class="user">
-            🟢 MadHatter
+            🟢 <span id="currentUser">Guest</span>
         </div>
     </header>
 
@@ -29,11 +27,11 @@
             <button class="room">🎮 Gaming</button>
             <button class="room">🎵 Music</button>
 
-            <h3>ONLINE — 3</h3>
+            <h3 id="onlineTitle">ONLINE — 0</h3>
 
-            <div class="online">🟢 Michelle</div>
-            <div class="online">🟢 Alex</div>
-            <div class="online">🟢 Shadow</div>
+            <div id="onlineUsers">
+                <!-- Online users will appear here later -->
+            </div>
 
         </aside>
 
@@ -41,49 +39,13 @@
 
             <div class="chat-header">
                 <div>
-                    <h2>💬 General</h2>
-                    <p>Talk. Connect. Chill.</p>
+                    <h2 id="chatTitle">💬 General</h2>
+                    <p id="chatDescription">Talk. Connect. Chill.</p>
                 </div>
             </div>
 
-            <div class="messages">
-
-                <div class="message">
-
-                    <div class="avatar">M</div>
-
-                    <div>
-                        <strong>Michelle</strong>
-                        <span class="role">Member</span>
-                        <p>yo what's up lol</p>
-                    </div>
-
-                </div>
-
-                <div class="message">
-
-                    <div class="avatar">A</div>
-
-                    <div>
-                        <strong>Alex</strong>
-                        <span class="role moderator">Moderator</span>
-                        <p>not much 😭</p>
-                    </div>
-
-                </div>
-
-                <div class="message">
-
-                    <div class="avatar">M</div>
-
-                    <div>
-                        <strong>MadHatter</strong>
-                        <span class="role owner">Owner</span>
-                        <p>welcome to SklChat 🔥</p>
-                    </div>
-
-                </div>
-
+            <div class="messages" id="messages">
+                <!-- Messages will appear here -->
             </div>
 
             <div class="message-input">
@@ -106,4 +68,3 @@
 
 </body>
 </html>
-```
