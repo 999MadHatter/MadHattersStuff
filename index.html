@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,62 +10,208 @@
 
 <body>
 
-    <header class="topbar">
-        <div class="logo">💬 SklChat</div>
+    <!-- LANDING PAGE -->
+    <section id="landingPage" class="page">
 
-        <div class="user">
-            🟢 <span id="currentUser">Guest</span>
+        <div class="landing-card">
+
+            <div class="big-logo">💬</div>
+
+            <h1>SklChat</h1>
+
+            <p class="tagline">Talk. Connect. Chill.</p>
+
+            <p class="description">
+                A place to chat, meet people, and hang out.
+            </p>
+
+            <div class="landing-buttons">
+                <button id="loginButton" class="primary-button">
+                    Log In
+                </button>
+
+                <button id="signupButton" class="secondary-button">
+                    Create Account
+                </button>
+            </div>
+
         </div>
-    </header>
 
-    <div class="app">
+    </section>
 
-        <aside class="sidebar">
 
-            <h3>CHAT ROOMS</h3>
+    <!-- LOGIN PAGE -->
+    <section id="loginPage" class="page hidden">
 
-            <button class="room active">💬 General</button>
-            <button class="room">🎮 Gaming</button>
-            <button class="room">🎵 Music</button>
+        <div class="auth-card">
 
-            <h3 id="onlineTitle">ONLINE — 0</h3>
+            <div class="small-logo">💬 SklChat</div>
 
-            <div id="onlineUsers">
-                <!-- Online users will appear here later -->
+            <h2>Welcome back</h2>
+
+            <p>Log in to continue chatting.</p>
+
+            <input
+                id="loginUsername"
+                type="text"
+                placeholder="Username"
+            >
+
+            <input
+                id="loginPassword"
+                type="password"
+                placeholder="Password"
+            >
+
+            <button id="enterChatButton" class="primary-button">
+                Log In
+            </button>
+
+            <button id="backFromLogin" class="text-button">
+                ← Back
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- SIGNUP PAGE -->
+    <section id="signupPage" class="page hidden">
+
+        <div class="auth-card">
+
+            <div class="small-logo">💬 SklChat</div>
+
+            <h2>Create your account</h2>
+
+            <p>Join the SklChat community.</p>
+
+            <input
+                id="signupUsername"
+                type="text"
+                placeholder="Username"
+            >
+
+            <input
+                id="signupEmail"
+                type="email"
+                placeholder="Email"
+            >
+
+            <input
+                id="signupPassword"
+                type="password"
+                placeholder="Password"
+            >
+
+            <button id="createAccountButton" class="primary-button">
+                Create Account
+            </button>
+
+            <button id="backFromSignup" class="text-button">
+                ← Back
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- CHAT PAGE -->
+    <section id="chatPage" class="hidden">
+
+        <header class="topbar">
+
+            <div class="logo">💬 SklChat</div>
+
+            <div class="user">
+                🟢 <span id="currentUser">Guest</span>
             </div>
 
-        </aside>
+        </header>
 
-        <main class="chat">
 
-            <div class="chat-header">
-                <div>
-                    <h2 id="chatTitle">💬 General</h2>
-                    <p id="chatDescription">Talk. Connect. Chill.</p>
+        <div class="app">
+
+            <aside class="sidebar">
+
+                <h3>CHAT ROOMS</h3>
+
+                <button class="room active">
+                    💬 General
+                </button>
+
+                <button class="room">
+                    🎮 Gaming
+                </button>
+
+                <button class="room">
+                    🎵 Music
+                </button>
+
+
+                <h3 id="onlineTitle">
+                    ONLINE — 0
+                </h3>
+
+                <div id="onlineUsers">
+                    <!-- Real online users will appear here later -->
                 </div>
-            </div>
 
-            <div class="messages" id="messages">
-                <!-- Messages will appear here -->
-            </div>
+            </aside>
 
-            <div class="message-input">
 
-                <input
-                    type="text"
-                    placeholder="Message General..."
-                    id="messageInput"
+            <main class="chat">
+
+                <div class="chat-header">
+
+                    <div>
+
+                        <h2 id="chatTitle">
+                            💬 General
+                        </h2>
+
+                        <p id="chatDescription">
+                            Talk. Connect. Chill.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="messages"
+                    id="messages"
                 >
+                    <!-- Messages will appear here -->
+                </div>
 
-                <button id="sendButton">Send</button>
 
-            </div>
+                <div class="message-input">
 
-        </main>
+                    <input
+                        type="text"
+                        id="messageInput"
+                        placeholder="Message General..."
+                    >
 
-    </div>
+                    <button id="sendButton">
+                        Send
+                    </button>
+
+                </div>
+
+            </main>
+
+        </div>
+
+    </section>
+
 
     <script src="app.js"></script>
 
 </body>
 </html>
+```
