@@ -4,13 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SklChat</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <h1>💬 SklChat</h1>
-    <p>Talk. Connect. Chill.</p>
 
-    <input type="text" placeholder="Enter your username">
-    <button>Join Chat</button>
+    <header class="topbar">
+        <div class="logo">💬 SklChat</div>
+
+        <div class="user">
+            🟢 MadHatter
+        </div>
+    </header>
+
+    <div class="app">
+
+        <aside class="sidebar">
+
+            <h3>CHAT ROOMS</h3>
+
+            <button class="room active">💬 General</button>
+            <button class="room">🎮 Gaming</button>
+            <button class="room">🎵 Music</button>
+
+            <h3>ONLINE — 3</h3>
+
+            <div class="online">🟢 Michelle</div>
+            <div class="online">🟢 Alex</div>
+            <div class="online">🟢 Shadow</div>
+
+        </aside>
+
+
+        <main class="chat">
+
+            <div class="chat-header">
+                <div>
+                    <h2>💬 General</h2>
+                    <p>Talk. Connect. Chill.</p>
+                </div>
+            </div>
+
+
+            <div class="messages">
+
+                <div class="message">
+                    <div class="avatar">M</div>
+
+                    <div>
+                        <strong>Michelle</strong>
+                        <span class="role">Member</span>
+                        <p>yo what's up lol</p>
+                    </div>
+                </div>
+
+
+                <div class="message">
+                    <div class="avatar">A</div>
+
+                    <div>
+                        <strong>Alex</strong>
+                        <span class="role moderator">Moderator</span>
+                        <p>not much 😭</p>
+                    </div>
+                </div>
+
+
+                <div class="message">
+                    <div class="avatar">M</div>
+
+                    <div>
+                        <strong>MadHatter</strong>
+                        <span class="role owner">Owner</span>
+                        <p>welcome to SklChat 🔥</p>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <div class="message-input">
+
+                <input
+                    type="text"
+                    placeholder="Message General..."
+                >
+
+                <button>Send</button>
+
+            </div>
+
+        </main>
+
+    </div>
+
 </body>
 </html>
