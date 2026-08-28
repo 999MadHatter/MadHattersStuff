@@ -1,4 +1,3 @@
-```javascript
 const landingPage = document.getElementById("landingPage");
 const loginPage = document.getElementById("loginPage");
 const signupPage = document.getElementById("signupPage");
@@ -27,8 +26,11 @@ const chatTitle = document.getElementById("chatTitle");
 const chatDescription = document.getElementById("chatDescription");
 
 
-function showPage(page) {
+// =========================
+// PAGE SWITCHING
+// =========================
 
+function showPage(page) {
     landingPage.classList.add("hidden");
     loginPage.classList.add("hidden");
     signupPage.classList.add("hidden");
@@ -38,25 +40,35 @@ function showPage(page) {
 }
 
 
+// =========================
+// LANDING PAGE
+// =========================
+
 loginButton.addEventListener("click", () => {
     showPage(loginPage);
 });
-
 
 signupButton.addEventListener("click", () => {
     showPage(signupPage);
 });
 
 
+// =========================
+// BACK BUTTONS
+// =========================
+
 backFromLogin.addEventListener("click", () => {
     showPage(landingPage);
 });
-
 
 backFromSignup.addEventListener("click", () => {
     showPage(landingPage);
 });
 
+
+// =========================
+// LOGIN PROTOTYPE
+// =========================
 
 enterChatButton.addEventListener("click", () => {
 
@@ -73,6 +85,10 @@ enterChatButton.addEventListener("click", () => {
 });
 
 
+// =========================
+// CREATE ACCOUNT PROTOTYPE
+// =========================
+
 createAccountButton.addEventListener("click", () => {
 
     const username = signupUsername.value.trim();
@@ -88,6 +104,10 @@ createAccountButton.addEventListener("click", () => {
 });
 
 
+// =========================
+// SEND MESSAGES
+// =========================
+
 function sendMessage() {
 
     const text = messageInput.value.trim();
@@ -97,20 +117,31 @@ function sendMessage() {
     }
 
     const message = document.createElement("div");
-
     message.className = "message";
 
-    message.innerHTML = `
-        <div class="avatar">
-            ${currentUser.textContent.charAt(0).toUpperCase()}
-        </div>
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent =
+        currentUser.textContent.charAt(0).toUpperCase();
 
-        <div>
-            <strong>${currentUser.textContent}</strong>
-            <span class="role owner">Member</span>
-            <p>${text}</p>
-        </div>
-    `;
+    const content = document.createElement("div");
+
+    const username = document.createElement("strong");
+    username.textContent = currentUser.textContent;
+
+    const role = document.createElement("span");
+    role.className = "role";
+    role.textContent = "Member";
+
+    const messageText = document.createElement("p");
+    messageText.textContent = text;
+
+    content.appendChild(username);
+    content.appendChild(role);
+    content.appendChild(messageText);
+
+    message.appendChild(avatar);
+    message.appendChild(content);
 
     messages.appendChild(message);
 
@@ -131,6 +162,10 @@ messageInput.addEventListener("keydown", (event) => {
 
 });
 
+
+// =========================
+// CHAT ROOMS
+// =========================
 
 const roomInfo = {
 
@@ -178,4 +213,10 @@ rooms.forEach(room => {
     });
 
 });
-```
+
+
+// =========================
+// START ON LANDING PAGE
+// =========================
+
+showPage(landingPage);
