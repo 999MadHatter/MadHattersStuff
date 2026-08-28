@@ -1,3 +1,4 @@
+```css
 * {
     box-sizing: border-box;
     margin: 0;
@@ -9,6 +10,159 @@ body {
     background: #0f1117;
     color: #ffffff;
 }
+
+/* =========================
+   GENERAL
+========================= */
+
+.hidden {
+    display: none !important;
+}
+
+button {
+    font-family: inherit;
+}
+
+
+/* =========================
+   LANDING PAGE
+========================= */
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.landing-card,
+.auth-card {
+    width: 90%;
+    max-width: 420px;
+    text-align: center;
+}
+
+.big-logo {
+    font-size: 64px;
+    margin-bottom: 12px;
+}
+
+.landing-card h1 {
+    font-size: 48px;
+    margin-bottom: 6px;
+}
+
+.tagline {
+    color: #aeb5c3;
+    font-size: 18px;
+}
+
+.description {
+    color: #777f8f;
+    margin: 20px 0 30px;
+    line-height: 1.5;
+}
+
+.landing-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.primary-button {
+    background: #5865f2;
+    color: white;
+}
+
+.primary-button:hover {
+    background: #4752c4;
+    transform: translateY(-1px);
+}
+
+.secondary-button {
+    background: #252a36;
+    color: white;
+}
+
+.secondary-button:hover {
+    background: #303645;
+    transform: translateY(-1px);
+}
+
+
+/* =========================
+   AUTH PAGES
+========================= */
+
+.auth-card {
+    background: #171a23;
+    border: 1px solid #292d38;
+    border-radius: 12px;
+    padding: 35px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.35);
+}
+
+.small-logo {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 25px;
+}
+
+.auth-card h2 {
+    font-size: 26px;
+    margin-bottom: 8px;
+}
+
+.auth-card > p {
+    color: #7f8797;
+    margin-bottom: 25px;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 13px;
+    margin-bottom: 12px;
+    border: 1px solid #303542;
+    border-radius: 7px;
+    background: #0f1117;
+    color: white;
+    outline: none;
+    font-size: 14px;
+}
+
+.auth-card input:focus {
+    border-color: #5865f2;
+}
+
+.text-button {
+    margin-top: 16px;
+    background: none;
+    border: none;
+    color: #8f98aa;
+    cursor: pointer;
+}
+
+.text-button:hover {
+    color: white;
+}
+
+
+/* =========================
+   TOP BAR
+========================= */
 
 .topbar {
     height: 60px;
@@ -28,6 +182,11 @@ body {
 .user {
     color: #b8becb;
 }
+
+
+/* =========================
+   CHAT LAYOUT
+========================= */
 
 .app {
     display: flex;
@@ -52,6 +211,11 @@ body {
     margin-top: 0;
 }
 
+
+/* =========================
+   CHAT ROOMS
+========================= */
+
 .room {
     width: 100%;
     padding: 11px;
@@ -63,6 +227,7 @@ body {
     text-align: left;
     cursor: pointer;
     font-size: 14px;
+    transition: 0.15s;
 }
 
 .room:hover,
@@ -71,16 +236,27 @@ body {
     color: white;
 }
 
+
+/* =========================
+   ONLINE USERS
+========================= */
+
 .online {
     padding: 7px 5px;
     color: #bfc5d1;
     font-size: 14px;
 }
 
+
+/* =========================
+   CHAT
+========================= */
+
 .chat {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .chat-header {
@@ -99,6 +275,11 @@ body {
     font-size: 13px;
 }
 
+
+/* =========================
+   MESSAGES
+========================= */
+
 .messages {
     flex: 1;
     padding: 25px;
@@ -114,6 +295,7 @@ body {
 .avatar {
     width: 40px;
     height: 40px;
+    min-width: 40px;
     background: #303645;
     border-radius: 50%;
     display: flex;
@@ -129,6 +311,7 @@ body {
 .message p {
     margin-top: 5px;
     color: #c5cad4;
+    word-break: break-word;
 }
 
 .role {
@@ -146,6 +329,11 @@ body {
 .role.owner {
     background: #765b20;
 }
+
+
+/* =========================
+   MESSAGE INPUT
+========================= */
 
 .message-input {
     display: flex;
@@ -165,6 +353,10 @@ body {
     outline: none;
 }
 
+.message-input input:focus {
+    border-color: #5865f2;
+}
+
 .message-input button {
     padding: 0 22px;
     border: none;
@@ -173,8 +365,52 @@ body {
     color: white;
     cursor: pointer;
     font-weight: bold;
+    transition: 0.2s;
 }
 
 .message-input button:hover {
     background: #4752c4;
 }
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+    .sidebar {
+        width: 190px;
+        padding: 15px;
+    }
+
+    .topbar {
+        padding: 0 15px;
+    }
+
+    .messages {
+        padding: 15px;
+    }
+
+    .message-input {
+        padding: 12px;
+    }
+
+}
+
+@media (max-width: 520px) {
+
+    .sidebar {
+        display: none;
+    }
+
+    .landing-card h1 {
+        font-size: 40px;
+    }
+
+    .auth-card {
+        padding: 25px;
+    }
+
+}
+```
