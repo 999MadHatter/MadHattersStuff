@@ -1,217 +1,225 @@
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SklChat</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+```javascript
+const landingPage = document.getElementById("landingPage");
+const loginPage = document.getElementById("loginPage");
+const signupPage = document.getElementById("signupPage");
+const chatPage = document.getElementById("chatPage");
 
-<body>
+const loginButton = document.getElementById("loginButton");
+const signupButton = document.getElementById("signupButton");
 
-    <!-- LANDING PAGE -->
-    <section id="landingPage" class="page">
+const backFromLogin = document.getElementById("backFromLogin");
+const backFromSignup = document.getElementById("backFromSignup");
 
-        <div class="landing-card">
+const enterChatButton = document.getElementById("enterChatButton");
+const createAccountButton = document.getElementById("createAccountButton");
 
-            <div class="big-logo">💬</div>
+const currentUser = document.getElementById("currentUser");
 
-            <h1>SklChat</h1>
+const loginUsername = document.getElementById("loginUsername");
+const signupUsername = document.getElementById("signupUsername");
 
-            <p class="tagline">Talk. Connect. Chill.</p>
+const messageInput = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+const messages = document.getElementById("messages");
 
-            <p class="description">
-                A place to chat, meet people, and hang out.
-            </p>
+const rooms = document.querySelectorAll(".room");
+const chatTitle = document.getElementById("chatTitle");
+const chatDescription = document.getElementById("chatDescription");
 
-            <div class="landing-buttons">
-                <button id="loginButton" class="primary-button">
-                    Log In
-                </button>
 
-                <button id="signupButton" class="secondary-button">
-                    Create Account
-                </button>
-            </div>
+// =========================
+// PAGE SWITCHING
+// =========================
 
-        </div>
+function showPage(page) {
+    landingPage.classList.add("hidden");
+    loginPage.classList.add("hidden");
+    signupPage.classList.add("hidden");
+    chatPage.classList.add("hidden");
 
-    </section>
+    page.classList.remove("hidden");
+}
 
 
-    <!-- LOGIN PAGE -->
-    <section id="loginPage" class="page hidden">
+// =========================
+// LANDING PAGE
+// =========================
 
-        <div class="auth-card">
+loginButton.addEventListener("click", () => {
+    showPage(loginPage);
+});
 
-            <div class="small-logo">💬 SklChat</div>
+signupButton.addEventListener("click", () => {
+    showPage(signupPage);
+});
 
-            <h2>Welcome back</h2>
 
-            <p>Log in to continue chatting.</p>
+// =========================
+// BACK BUTTONS
+// =========================
 
-            <input
-                id="loginUsername"
-                type="text"
-                placeholder="Username"
-            >
+backFromLogin.addEventListener("click", () => {
+    showPage(landingPage);
+});
 
-            <input
-                id="loginPassword"
-                type="password"
-                placeholder="Password"
-            >
+backFromSignup.addEventListener("click", () => {
+    showPage(landingPage);
+});
 
-            <button id="enterChatButton" class="primary-button">
-                Log In
-            </button>
 
-            <button id="backFromLogin" class="text-button">
-                ← Back
-            </button>
+// =========================
+// LOGIN
+// =========================
 
-        </div>
+enterChatButton.addEventListener("click", () => {
 
-    </section>
+    const username = loginUsername.value.trim();
 
+    if (username === "") {
+        alert("Please enter a username.");
+        return;
+    }
 
-    <!-- SIGNUP PAGE -->
-    <section id="signupPage" class="page hidden">
+    currentUser.textContent = username;
 
-        <div class="auth-card">
+    showPage(chatPage);
+});
 
-            <div class="small-logo">💬 SklChat</div>
 
-            <h2>Create your account</h2>
+// =========================
+// CREATE ACCOUNT
+// =========================
 
-            <p>Join the SklChat community.</p>
+createAccountButton.addEventListener("click", () => {
 
-            <input
-                id="signupUsername"
-                type="text"
-                placeholder="Username"
-            >
+    const username = signupUsername.value.trim();
 
-            <input
-                id="signupEmail"
-                type="email"
-                placeholder="Email"
-            >
+    if (username === "") {
+        alert("Please choose a username.");
+        return;
+    }
 
-            <input
-                id="signupPassword"
-                type="password"
-                placeholder="Password"
-            >
+    currentUser.textContent = username;
 
-            <button id="createAccountButton" class="primary-button">
-                Create Account
-            </button>
+    showPage(chatPage);
+});
 
-            <button id="backFromSignup" class="text-button">
-                ← Back
-            </button>
 
-        </div>
+// =========================
+// SEND MESSAGES
+// =========================
 
-    </section>
+function sendMessage() {
 
+    const text = messageInput.value.trim();
 
-    <!-- CHAT PAGE -->
-    <section id="chatPage" class="hidden">
+    if (text === "") {
+        return;
+    }
 
-        <header class="topbar">
+    const message = document.createElement("div");
 
-            <div class="logo">💬 SklChat</div>
+    message.className = "message";
 
-            <div class="user">
-                🟢 <span id="currentUser">Guest</span>
-            </div>
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent =
+        currentUser.textContent.charAt(0).toUpperCase();
 
-        </header>
+    const content = document.createElement("div");
 
+    const username = document.createElement("strong");
+    username.textContent = currentUser.textContent;
 
-        <div class="app">
+    const role = document.createElement("span");
+    role.className = "role";
+    role.textContent = "Member";
 
-            <aside class="sidebar">
+    const messageText = document.createElement("p");
+    messageText.textContent = text;
 
-                <h3>CHAT ROOMS</h3>
+    content.appendChild(username);
+    content.appendChild(role);
+    content.appendChild(messageText);
 
-                <button class="room active">
-                    💬 General
-                </button>
+    message.appendChild(avatar);
+    message.appendChild(content);
 
-                <button class="room">
-                    🎮 Gaming
-                </button>
+    messages.appendChild(message);
 
-                <button class="room">
-                    🎵 Music
-                </button>
+    messageInput.value = "";
 
+    messages.scrollTop = messages.scrollHeight;
+}
 
-                <h3 id="onlineTitle">
-                    ONLINE — 0
-                </h3>
 
-                <div id="onlineUsers">
-                    <!-- Real online users will appear here later -->
-                </div>
+sendButton.addEventListener("click", sendMessage);
 
-            </aside>
 
+messageInput.addEventListener("keydown", (event) => {
 
-            <main class="chat">
+    if (event.key === "Enter") {
+        sendMessage();
+    }
 
-                <div class="chat-header">
+});
 
-                    <div>
 
-                        <h2 id="chatTitle">
-                            💬 General
-                        </h2>
+// =========================
+// CHAT ROOMS
+// =========================
 
-                        <p id="chatDescription">
-                            Talk. Connect. Chill.
-                        </p>
+const roomInfo = {
 
-                    </div>
+    "💬 General": {
+        title: "💬 General",
+        description: "Talk. Connect. Chill."
+    },
 
-                </div>
+    "🎮 Gaming": {
+        title: "🎮 Gaming",
+        description: "Talk about games."
+    },
 
+    "🎵 Music": {
+        title: "🎵 Music",
+        description: "Share music and discover new stuff."
+    }
 
-                <div
-                    class="messages"
-                    id="messages"
-                >
-                    <!-- Messages will appear here -->
-                </div>
+};
 
 
-                <div class="message-input">
+rooms.forEach(room => {
 
-                    <input
-                        type="text"
-                        id="messageInput"
-                        placeholder="Message General..."
-                    >
+    room.addEventListener("click", () => {
 
-                    <button id="sendButton">
-                        Send
-                    </button>
+        rooms.forEach(r => {
+            r.classList.remove("active");
+        });
 
-                </div>
+        room.classList.add("active");
 
-            </main>
+        const info = roomInfo[room.textContent.trim()];
 
-        </div>
+        if (info) {
 
-    </section>
+            chatTitle.textContent = info.title;
 
+            chatDescription.textContent =
+                info.description;
 
-    <script src="app.js"></script>
+            messageInput.placeholder =
+                `Message ${room.textContent.trim()}...`;
+        }
 
-</body>
-</html>
+    });
+
+});
+
+
+// =========================
+// START ON LANDING PAGE
+// =========================
+
+showPage(landingPage);
 ```
