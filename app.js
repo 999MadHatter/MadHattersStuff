@@ -1,65 +1,120 @@
+```javascript
+const landingPage = document.getElementById("landingPage");
+const loginPage = document.getElementById("loginPage");
+const signupPage = document.getElementById("signupPage");
+const chatPage = document.getElementById("chatPage");
+
+const loginButton = document.getElementById("loginButton");
+const signupButton = document.getElementById("signupButton");
+
+const backFromLogin = document.getElementById("backFromLogin");
+const backFromSignup = document.getElementById("backFromSignup");
+
+const enterChatButton = document.getElementById("enterChatButton");
+const createAccountButton = document.getElementById("createAccountButton");
+
+const currentUser = document.getElementById("currentUser");
+
+const loginUsername = document.getElementById("loginUsername");
+const signupUsername = document.getElementById("signupUsername");
+
+const messageInput = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+const messages = document.getElementById("messages");
+
 const rooms = document.querySelectorAll(".room");
-const messages = document.querySelector(".messages");
-const input = document.querySelector(".message-input input");
-const sendButton = document.querySelector(".message-input button");
-const chatTitle = document.querySelector(".chat-header h2");
-const chatDescription = document.querySelector(".chat-header p");
+const chatTitle = document.getElementById("chatTitle");
+const chatDescription = document.getElementById("chatDescription");
 
-const roomInfo = {
-    "💬 General": {
-        title: "💬 General",
-        description: "Talk. Connect. Chill."
-    },
-    "🎮 Gaming": {
-        title: "🎮 Gaming",
-        description: "Talk about games."
-    },
-    "🎵 Music": {
-        title: "🎵 Music",
-        description: "Share music and discover new stuff."
+
+function showPage(page) {
+
+    landingPage.classList.add("hidden");
+    loginPage.classList.add("hidden");
+    signupPage.classList.add("hidden");
+    chatPage.classList.add("hidden");
+
+    page.classList.remove("hidden");
+}
+
+
+loginButton.addEventListener("click", () => {
+    showPage(loginPage);
+});
+
+
+signupButton.addEventListener("click", () => {
+    showPage(signupPage);
+});
+
+
+backFromLogin.addEventListener("click", () => {
+    showPage(landingPage);
+});
+
+
+backFromSignup.addEventListener("click", () => {
+    showPage(landingPage);
+});
+
+
+enterChatButton.addEventListener("click", () => {
+
+    const username = loginUsername.value.trim();
+
+    if (username === "") {
+        alert("Please enter a username.");
+        return;
     }
-};
 
-rooms.forEach(room => {
-    room.addEventListener("click", () => {
+    currentUser.textContent = username;
 
-        rooms.forEach(r => r.classList.remove("active"));
+    showPage(chatPage);
+});
 
-        room.classList.add("active");
 
-        const info = roomInfo[room.textContent.trim()];
+createAccountButton.addEventListener("click", () => {
 
-        if (info) {
-            chatTitle.textContent = info.title;
-            chatDescription.textContent = info.description;
-        }
-    });
+    const username = signupUsername.value.trim();
+
+    if (username === "") {
+        alert("Please choose a username.");
+        return;
+    }
+
+    currentUser.textContent = username;
+
+    showPage(chatPage);
 });
 
 
 function sendMessage() {
 
-    const text = input.value.trim();
+    const text = messageInput.value.trim();
 
-    if (text === "") return;
+    if (text === "") {
+        return;
+    }
 
     const message = document.createElement("div");
 
     message.className = "message";
 
     message.innerHTML = `
-        <div class="avatar">M</div>
+        <div class="avatar">
+            ${currentUser.textContent.charAt(0).toUpperCase()}
+        </div>
 
         <div>
-            <strong>MadHatter</strong>
-            <span class="role owner">Owner</span>
+            <strong>${currentUser.textContent}</strong>
+            <span class="role owner">Member</span>
             <p>${text}</p>
         </div>
     `;
 
     messages.appendChild(message);
 
-    input.value = "";
+    messageInput.value = "";
 
     messages.scrollTop = messages.scrollHeight;
 }
@@ -67,10 +122,60 @@ function sendMessage() {
 
 sendButton.addEventListener("click", sendMessage);
 
-input.addEventListener("keydown", event => {
+
+messageInput.addEventListener("keydown", (event) => {
 
     if (event.key === "Enter") {
         sendMessage();
     }
 
 });
+
+
+const roomInfo = {
+
+    "💬 General": {
+        title: "💬 General",
+        description: "Talk. Connect. Chill."
+    },
+
+    "🎮 Gaming": {
+        title: "🎮 Gaming",
+        description: "Talk about games."
+    },
+
+    "🎵 Music": {
+        title: "🎵 Music",
+        description: "Share music and discover new stuff."
+    }
+
+};
+
+
+rooms.forEach(room => {
+
+    room.addEventListener("click", () => {
+
+        rooms.forEach(r => {
+            r.classList.remove("active");
+        });
+
+        room.classList.add("active");
+
+        const info = roomInfo[room.textContent.trim()];
+
+        if (info) {
+
+            chatTitle.textContent = info.title;
+
+            chatDescription.textContent =
+                info.description;
+
+            messageInput.placeholder =
+                `Message ${room.textContent.trim()}...`;
+        }
+
+    });
+
+});
+```
