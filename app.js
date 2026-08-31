@@ -1,3 +1,7 @@
+// =========================
+// AFTERHOURS APP
+// =========================
+
 const landingPage = document.getElementById("landingPage");
 const loginPage = document.getElementById("loginPage");
 const signupPage = document.getElementById("signupPage");
@@ -15,17 +19,15 @@ const createAccountButton = document.getElementById("createAccountButton");
 const currentUser = document.getElementById("currentUser");
 
 const loginUsername = document.getElementById("loginUsername");
-const loginPassword = document.getElementById("loginPassword");
-
 const signupUsername = document.getElementById("signupUsername");
-const signupEmail = document.getElementById("signupEmail");
-const signupPassword = document.getElementById("signupPassword");
 
 const messageInput = document.getElementById("messageInput");
 const sendButton = document.getElementById("sendButton");
+
 const messages = document.getElementById("messages");
 
 const rooms = document.querySelectorAll(".room");
+
 const chatTitle = document.getElementById("chatTitle");
 const chatDescription = document.getElementById("chatDescription");
 
@@ -35,6 +37,7 @@ const chatDescription = document.getElementById("chatDescription");
 // =========================
 
 function showPage(page) {
+
     landingPage.classList.add("hidden");
     loginPage.classList.add("hidden");
     signupPage.classList.add("hidden");
@@ -71,138 +74,49 @@ backFromSignup.addEventListener("click", () => {
 
 
 // =========================
-// REAL LOGIN
+// TEMP LOGIN
 // =========================
 
-enterChatButton.addEventListener("click", async () => {
+enterChatButton.addEventListener("click", () => {
 
     const username = loginUsername.value.trim();
-    const password = loginPassword.value;
 
-    if (!username || !password) {
-        alert("Enter your username and password.");
+    if (!username) {
+        alert("Enter a username.");
         return;
     }
 
-    enterChatButton.disabled = true;
-    enterChatButton.textContent = "Logging in...";
+    currentUser.textContent = username;
 
-    try {
+    showPage(chatPage);
 
-        const response = await fetch("/api/login", {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            credentials: "include",
-
-            body: JSON.stringify({
-                username,
-                password
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            alert(data.error || "Login failed.");
-            return;
-        }
-
-        currentUser.textContent = data.user.username;
-
-        showPage(chatPage);
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert("Unable to connect to SklChat.");
-
-    } finally {
-
-        enterChatButton.disabled = false;
-        enterChatButton.textContent = "Log In";
-
-    }
-
+    messageInput.focus();
 });
 
 
 // =========================
-// REAL REGISTRATION
+// TEMP REGISTER
 // =========================
 
-createAccountButton.addEventListener("click", async () => {
+createAccountButton.addEventListener("click", () => {
 
     const username = signupUsername.value.trim();
-    const email = signupEmail.value.trim();
-    const password = signupPassword.value;
 
-    if (!username || !email || !password) {
-        alert("Please fill in every field.");
+    if (!username) {
+        alert("Choose a username.");
         return;
     }
 
-    if (password.length < 8) {
-        alert("Password must be at least 8 characters.");
-        return;
-    }
+    currentUser.textContent = username;
 
-    createAccountButton.disabled = true;
-    createAccountButton.textContent = "Creating account...";
+    showPage(chatPage);
 
-    try {
-
-        const response = await fetch("/api/register", {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            credentials: "include",
-
-            body: JSON.stringify({
-                username,
-                email,
-                password
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            alert(data.error || "Registration failed.");
-            return;
-        }
-
-        currentUser.textContent = data.user.username;
-
-        alert("Account created successfully!");
-
-        showPage(chatPage);
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert("Unable to connect to SklChat.");
-
-    } finally {
-
-        createAccountButton.disabled = false;
-        createAccountButton.textContent = "Create Account";
-
-    }
-
+    messageInput.focus();
 });
 
 
 // =========================
-// MESSAGES
+// SEND MESSAGE
 // =========================
 
 function sendMessage() {
@@ -217,6 +131,7 @@ function sendMessage() {
 
     message.className = "message";
 
+    // Avatar
     const avatar = document.createElement("div");
 
     avatar.className = "avatar";
@@ -226,22 +141,33 @@ function sendMessage() {
             .charAt(0)
             .toUpperCase();
 
+
+    // Message content
     const content = document.createElement("div");
 
+
+    // Username
     const username = document.createElement("strong");
 
     username.textContent =
         currentUser.textContent;
 
+
+    // Role
     const role = document.createElement("span");
 
     role.className = "role";
+
     role.textContent = "Member";
 
+
+    // Text
     const messageText = document.createElement("p");
 
     messageText.textContent = text;
 
+
+    // Build message
     content.appendChild(username);
     content.appendChild(role);
     content.appendChild(messageText);
@@ -251,17 +177,23 @@ function sendMessage() {
 
     messages.appendChild(message);
 
+
+    // Clear input
     messageInput.value = "";
 
     messages.scrollTop =
         messages.scrollHeight;
+
+    messageInput.focus();
 }
 
 
+// Send button
 sendButton.addEventListener("click", sendMessage);
 
 
-messageInput.addEventListener("keydown", event => {
+// Enter key
+messageInput.addEventListener("keydown", (event) => {
 
     if (event.key === "Enter") {
         sendMessage();
@@ -298,27 +230,39 @@ rooms.forEach(room => {
 
     room.addEventListener("click", () => {
 
+        // Remove active from all rooms
         rooms.forEach(r => {
             r.classList.remove("active");
         });
 
+        // Activate clicked room
         room.classList.add("active");
+
 
         const info =
             roomInfo[room.textContent.trim()];
 
-        if (info) {
 
-            chatTitle.textContent =
-                info.title;
-
-            chatDescription.textContent =
-                info.description;
-
-            messageInput.placeholder =
-                `Message ${room.textContent.trim()}...`;
-
+        if (!info) {
+            return;
         }
+
+
+        // Update header
+        chatTitle.textContent =
+            info.title;
+
+        chatDescription.textContent =
+            info.description;
+
+
+        // Update placeholder
+        messageInput.placeholder =
+            `Message ${room.textContent.trim()}...`;
+
+
+        // Clear current messages
+        messages.innerHTML = "";
 
     });
 
