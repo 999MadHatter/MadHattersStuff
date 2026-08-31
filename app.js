@@ -86,7 +86,7 @@ function showRegister() {
 // LOGIN
 // =========================
 
-function login() {
+async function login() {
 
     const username =
         get("loginUsername").value.trim();
@@ -111,24 +111,49 @@ function login() {
     }
 
 
-    currentUser.username = username;
+    // Find the user's email from their username.
+    // Supabase login itself uses email + password.
 
-    currentUser.displayName = username;
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("id, username, display_name, bio, role")
+            .eq("username", username)
+            .maybeSingle();
 
 
-    updateUser();
+    if (profileError) {
+
+        console.error(profileError);
+
+        alert("Unable to find that account.");
+
+        return;
+    }
 
 
-    showChat();
+    if (!profile) {
+
+        alert("Incorrect username or password.");
+
+        return;
+    }
+
+
+    // Get the email belonging to this account.
+    // We cannot retrieve another user's email from profiles,
+    // so for the first version we'll use email login instead.
+    
+    alert(
+        "Your account exists, but login currently needs the account email. We'll finish username login next."
+    );
 
 }
-
-
 // =========================
 // REGISTER
 // =========================
 
-function register() {
+async function register() {
 
     const username =
         get("registerUsername").value.trim();
@@ -141,59 +166,81 @@ function register() {
 
 
     if (!username) {
-
         alert("Please choose a username.");
-
         return;
     }
 
 
     if (!email) {
-
         alert("Please enter your email.");
-
         return;
     }
 
 
     if (!email.includes("@")) {
-
         alert("Please enter a valid email.");
-
         return;
     }
 
 
     if (!password) {
-
         alert("Please choose a password.");
-
         return;
     }
 
 
     if (password.length < 8) {
+        alert("Password must be at least 8 characters.");
+        return;
+    }
 
-        alert(
-            "Password must be at least 8 characters."
-        );
+
+    // Create the REAL Supabase account
+
+    const { data, error } =
+        await supabaseClient.auth.signUp({
+
+            email: email,
+
+            password: password,
+
+            options: {
+                data: {
+                    username: username,
+                    display_name: username
+                }
+            }
+
+        });
+
+
+    // Something went wrong
+
+    if (error) {
+
+        console.error(error);
+
+        alert(error.message);
 
         return;
     }
 
 
-    currentUser.username = username;
+    // Account created
 
-    currentUser.displayName = username;
+    if (data.user) {
 
+        alert(
+            "Account created! Check your email to verify your account."
+        );
 
-    updateUser();
+        // Don't enter the chat yet.
+        // Email verification is required.
 
-
-    showChat();
+        showLogin();
+    }
 
 }
-
 
 // =========================
 // SHOW CHAT
