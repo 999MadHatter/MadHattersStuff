@@ -1,4 +1,12 @@
 ```javascript
+const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_kb_dDY7fXA0yTkyQyoBwYw_1lkqf6GF";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 // =========================
 // AFTERHOURS
 // =========================
