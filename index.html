@@ -1,142 +1,139 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SklChat</title>
+
+    <title>Afterhours</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <!-- LANDING PAGE -->
+    <!-- =========================
+         LANDING PAGE
+    ========================== -->
+
     <section id="landingPage" class="page">
 
-        <div class="landing-card">
+        <h1>🌙 Afterhours</h1>
 
-            <div class="big-logo">💬</div>
+        <p>Talk. Connect. Stay up.</p>
 
-            <h1>SklChat</h1>
+        <button id="loginButton">
+            Log In
+        </button>
 
-            <p class="tagline">Talk. Connect. Chill.</p>
-
-            <p class="description">
-                A place to chat, meet people, and hang out.
-            </p>
-
-            <div class="landing-buttons">
-
-                <button id="loginButton" class="primary-button">
-                    Log In
-                </button>
-
-                <button id="signupButton" class="secondary-button">
-                    Create Account
-                </button>
-
-            </div>
-
-        </div>
+        <button id="signupButton">
+            Create Account
+        </button>
 
     </section>
 
 
-    <!-- LOGIN PAGE -->
+    <!-- =========================
+         LOGIN PAGE
+    ========================== -->
+
     <section id="loginPage" class="page hidden">
 
-        <div class="auth-card">
+        <h1>Welcome Back</h1>
 
-            <div class="small-logo">💬 SklChat</div>
+        <input
+            id="loginUsername"
+            type="text"
+            placeholder="Username"
+            autocomplete="username"
+        >
 
-            <h2>Welcome back</h2>
+        <input
+            id="loginPassword"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+        >
 
-            <p>Log in to continue chatting.</p>
+        <button id="enterChatButton">
+            Log In
+        </button>
 
-            <input
-                id="loginUsername"
-                type="text"
-                placeholder="Username"
-            >
-
-            <input
-                id="loginPassword"
-                type="password"
-                placeholder="Password"
-            >
-
-            <button id="enterChatButton" class="primary-button">
-                Log In
-            </button>
-
-            <button id="backFromLogin" class="text-button">
-                ← Back
-            </button>
-
-        </div>
+        <button id="backFromLogin">
+            Back
+        </button>
 
     </section>
 
 
-    <!-- SIGNUP PAGE -->
+    <!-- =========================
+         SIGNUP PAGE
+    ========================== -->
+
     <section id="signupPage" class="page hidden">
 
-        <div class="auth-card">
+        <h1>Create Account</h1>
 
-            <div class="small-logo">💬 SklChat</div>
+        <input
+            id="signupUsername"
+            type="text"
+            placeholder="Username"
+            maxlength="32"
+            autocomplete="username"
+        >
 
-            <h2>Create your account</h2>
+        <input
+            id="signupEmail"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+        >
 
-            <p>Join the SklChat community.</p>
+        <input
+            id="signupPassword"
+            type="password"
+            placeholder="Password"
+            autocomplete="new-password"
+        >
 
-            <input
-                id="signupUsername"
-                type="text"
-                placeholder="Username"
-            >
+        <button id="createAccountButton">
+            Create Account
+        </button>
 
-            <input
-                id="signupEmail"
-                type="email"
-                placeholder="Email"
-            >
-
-            <input
-                id="signupPassword"
-                type="password"
-                placeholder="Password"
-            >
-
-            <button id="createAccountButton" class="primary-button">
-                Create Account
-            </button>
-
-            <button id="backFromSignup" class="text-button">
-                ← Back
-            </button>
-
-        </div>
+        <button id="backFromSignup">
+            Back
+        </button>
 
     </section>
 
 
-    <!-- CHAT PAGE -->
-    <section id="chatPage" class="hidden">
+    <!-- =========================
+         CHAT PAGE
+    ========================== -->
+
+    <section id="chatPage" class="page hidden">
 
         <header class="topbar">
 
             <div class="logo">
-                💬 SklChat
+                🌙 Afterhours
             </div>
 
-            <div class="user">
-                🟢 <span id="currentUser">Guest</span>
-            </div>
+            <button
+                class="user"
+                id="profileButton"
+            >
+                🟢 <span id="topUsername">MadHatter</span>
+            </button>
 
         </header>
 
 
         <div class="app">
+
+
+            <!-- SIDEBAR -->
 
             <aside class="sidebar">
 
@@ -160,34 +157,32 @@
                 </h3>
 
                 <div id="onlineUsers">
-                    <!-- Online users will appear here later -->
+                    <!-- Online users will appear here -->
                 </div>
 
             </aside>
 
 
+            <!-- CHAT -->
+
             <main class="chat">
 
                 <div class="chat-header">
 
-                    <div>
+                    <h2 id="chatTitle">
+                        💬 General
+                    </h2>
 
-                        <h2 id="chatTitle">
-                            💬 General
-                        </h2>
-
-                        <p id="chatDescription">
-                            Talk. Connect. Chill.
-                        </p>
-
-                    </div>
+                    <p id="chatDescription">
+                        Talk. Connect. Chill.
+                    </p>
 
                 </div>
 
 
                 <div
-                    class="messages"
                     id="messages"
+                    class="messages"
                 >
                     <!-- Messages appear here -->
                 </div>
@@ -196,9 +191,10 @@
                 <div class="message-input">
 
                     <input
-                        type="text"
                         id="messageInput"
-                        placeholder="Message General..."
+                        type="text"
+                        placeholder="Message 💬 General..."
+                        maxlength="2000"
                     >
 
                     <button id="sendButton">
@@ -214,8 +210,121 @@
     </section>
 
 
-    <!-- JavaScript -->
+    <!-- =========================
+         PROFILE MODAL
+    ========================== -->
+
+    <div
+        id="profileModal"
+        class="modal hidden"
+    >
+
+        <div class="profile-card">
+
+            <button
+                id="closeProfile"
+                class="close-button"
+            >
+                ×
+            </button>
+
+            <div
+                id="profileAvatar"
+                class="profile-avatar"
+            >
+                M
+            </div>
+
+            <h2 id="profileName">
+                MadHatter
+            </h2>
+
+            <span
+                id="profileRole"
+                class="role owner"
+            >
+                Owner
+            </span>
+
+            <p id="profileBio">
+                Building Afterhours 🔥
+            </p>
+
+            <p>
+                🟢 Online
+            </p>
+
+            <button id="editProfileButton">
+                Edit Profile
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         EDIT PROFILE MODAL
+    ========================== -->
+
+    <div
+        id="editProfileModal"
+        class="modal hidden"
+    >
+
+        <div class="profile-card">
+
+            <button
+                id="closeEditProfile"
+                class="close-button"
+            >
+                ×
+            </button>
+
+            <h2>
+                Edit Profile
+            </h2>
+
+
+            <label for="editDisplayName">
+                Display Name
+            </label>
+
+            <input
+                id="editDisplayName"
+                type="text"
+                maxlength="32"
+                placeholder="Display name"
+            >
+
+
+            <label for="editBio">
+                Bio
+            </label>
+
+            <textarea
+                id="editBio"
+                maxlength="160"
+                placeholder="Tell people about yourself..."
+            ></textarea>
+
+
+            <button id="saveProfileButton">
+                Save Changes
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
     <script src="app.js"></script>
 
 </body>
+
 </html>
+```
