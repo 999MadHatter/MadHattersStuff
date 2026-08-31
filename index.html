@@ -17,19 +17,36 @@
          LANDING PAGE
     ========================== -->
 
-    <section id="landingPage" class="page">
+    <section id="landingPage" class="page landing-page">
 
-        <h1>🌙 Afterhours</h1>
+        <div class="landing-container">
 
-        <p>Talk. Connect. Stay up.</p>
+            <div class="brand-icon">🌙</div>
 
-        <button id="loginButton">
-            Log In
-        </button>
+            <h1>Afterhours</h1>
 
-        <button id="signupButton">
-            Create Account
-        </button>
+            <p class="tagline">
+                Talk. Connect. Stay up.
+            </p>
+
+            <p class="landing-description">
+                A place to hang out, talk with friends,
+                and make memories.
+            </p>
+
+            <div class="landing-buttons">
+
+                <button id="loginButton" class="primary-button">
+                    Log In
+                </button>
+
+                <button id="signupButton" class="secondary-button">
+                    Create Account
+                </button>
+
+            </div>
+
+        </div>
 
     </section>
 
@@ -38,93 +55,150 @@
          LOGIN PAGE
     ========================== -->
 
-    <section id="loginPage" class="page hidden">
+    <section id="loginPage" class="page auth-page hidden">
 
-        <h1>Welcome Back</h1>
+        <div class="auth-card">
 
-        <input
-            id="loginUsername"
-            type="text"
-            placeholder="Username"
-            autocomplete="username"
-        >
+            <div class="auth-logo">🌙</div>
 
-        <input
-            id="loginPassword"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-        >
+            <h1>Welcome back</h1>
 
-        <button id="enterChatButton">
-            Log In
-        </button>
+            <p>Log in to Afterhours.</p>
 
-        <button id="backFromLogin">
-            Back
-        </button>
+            <label for="loginUsername">
+                Username
+            </label>
 
-    </section>
+            <input
+                id="loginUsername"
+                type="text"
+                placeholder="Enter your username"
+                autocomplete="username"
+            >
 
+            <label for="loginPassword">
+                Password
+            </label>
 
-    <!-- =========================
-         SIGNUP PAGE
-    ========================== -->
+            <input
+                id="loginPassword"
+                type="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+            >
 
-    <section id="signupPage" class="page hidden">
+            <button
+                id="enterChatButton"
+                class="primary-button full-button"
+            >
+                Log In
+            </button>
 
-        <h1>Create Account</h1>
+            <button
+                id="backFromLogin"
+                class="text-button"
+            >
+                ← Back
+            </button>
 
-        <input
-            id="signupUsername"
-            type="text"
-            placeholder="Username"
-            maxlength="32"
-            autocomplete="username"
-        >
-
-        <input
-            id="signupEmail"
-            type="email"
-            placeholder="Email"
-            autocomplete="email"
-        >
-
-        <input
-            id="signupPassword"
-            type="password"
-            placeholder="Password"
-            autocomplete="new-password"
-        >
-
-        <button id="createAccountButton">
-            Create Account
-        </button>
-
-        <button id="backFromSignup">
-            Back
-        </button>
+        </div>
 
     </section>
 
 
     <!-- =========================
-         CHAT PAGE
+         REGISTER PAGE
     ========================== -->
 
-    <section id="chatPage" class="page hidden">
+    <section id="signupPage" class="page auth-page hidden">
+
+        <div class="auth-card">
+
+            <div class="auth-logo">🌙</div>
+
+            <h1>Create your account</h1>
+
+            <p>Join the Afterhours community.</p>
+
+            <label for="signupUsername">
+                Username
+            </label>
+
+            <input
+                id="signupUsername"
+                type="text"
+                placeholder="Choose a username"
+                maxlength="32"
+                autocomplete="username"
+            >
+
+            <label for="signupEmail">
+                Email
+            </label>
+
+            <input
+                id="signupEmail"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+            >
+
+            <label for="signupPassword">
+                Password
+            </label>
+
+            <input
+                id="signupPassword"
+                type="password"
+                placeholder="Create a password"
+                autocomplete="new-password"
+            >
+
+            <button
+                id="createAccountButton"
+                class="primary-button full-button"
+            >
+                Create Account
+            </button>
+
+            <button
+                id="backFromSignup"
+                class="text-button"
+            >
+                ← Back
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         CHAT APPLICATION
+    ========================== -->
+
+    <section id="chatPage" class="page chat-page hidden">
+
+        <!-- TOP BAR -->
 
         <header class="topbar">
 
             <div class="logo">
-                🌙 Afterhours
+                <span>🌙</span>
+                <strong>Afterhours</strong>
             </div>
 
             <button
-                class="user"
                 id="profileButton"
+                class="user-button"
             >
-                🟢 <span id="topUsername">MadHatter</span>
+
+                <span class="online-dot"></span>
+
+                <span id="topUsername">
+                    MadHatter
+                </span>
+
             </button>
 
         </header>
@@ -132,32 +206,64 @@
 
         <div class="app">
 
-
             <!-- SIDEBAR -->
 
             <aside class="sidebar">
 
-                <h3>CHAT ROOMS</h3>
+                <div class="sidebar-section">
 
-                <button class="room active">
-                    💬 General
-                </button>
+                    <h3>CHAT ROOMS</h3>
 
-                <button class="room">
-                    🎮 Gaming
-                </button>
+                    <button
+                        class="room active"
+                        data-room="general"
+                    >
+                        <span>💬</span>
+                        General
+                    </button>
 
-                <button class="room">
-                    🎵 Music
-                </button>
+                    <button
+                        class="room"
+                        data-room="gaming"
+                    >
+                        <span>🎮</span>
+                        Gaming
+                    </button>
+
+                    <button
+                        class="room"
+                        data-room="music"
+                    >
+                        <span>🎵</span>
+                        Music
+                    </button>
+
+                </div>
 
 
-                <h3 id="onlineTitle">
-                    ONLINE — 0
-                </h3>
+                <div class="sidebar-section online-section">
 
-                <div id="onlineUsers">
-                    <!-- Online users will appear here -->
+                    <h3 id="onlineTitle">
+                        ONLINE — 0
+                    </h3>
+
+                    <div id="onlineUsers">
+                        <!-- Users appear here -->
+                    </div>
+
+                </div>
+
+
+                <div class="sidebar-bottom">
+
+                    <p>
+                        Afterhours
+                    </p>
+
+                    <span>
+                        Prototype
+                    </span>
+
                 </div>
 
             </aside>
@@ -169,13 +275,17 @@
 
                 <div class="chat-header">
 
-                    <h2 id="chatTitle">
-                        💬 General
-                    </h2>
+                    <div>
 
-                    <p id="chatDescription">
-                        Talk. Connect. Chill.
-                    </p>
+                        <h2 id="chatTitle">
+                            💬 General
+                        </h2>
+
+                        <p id="chatDescription">
+                            Talk. Connect. Chill.
+                        </p>
+
+                    </div>
 
                 </div>
 
@@ -184,22 +294,47 @@
                     id="messages"
                     class="messages"
                 >
-                    <!-- Messages appear here -->
+
+                    <div class="empty-chat">
+
+                        <div>
+                            💬
+                        </div>
+
+                        <h3>
+                            Welcome to General
+                        </h3>
+
+                        <p>
+                            Be the first person to send a message.
+                        </p>
+
+                    </div>
+
                 </div>
 
 
-                <div class="message-input">
+                <div class="message-input-container">
 
-                    <input
-                        id="messageInput"
-                        type="text"
-                        placeholder="Message 💬 General..."
-                        maxlength="2000"
-                    >
+                    <div class="message-input">
 
-                    <button id="sendButton">
-                        Send
-                    </button>
+                        <input
+                            id="messageInput"
+                            type="text"
+                            placeholder="Message General..."
+                            maxlength="2000"
+                            autocomplete="off"
+                        >
+
+                        <button id="sendButton">
+                            Send
+                        </button>
+
+                    </div>
+
+                    <p class="input-hint">
+                        Press Enter to send
+                    </p>
 
                 </div>
 
@@ -224,6 +359,7 @@
             <button
                 id="closeProfile"
                 class="close-button"
+                aria-label="Close profile"
             >
                 ×
             </button>
@@ -246,15 +382,22 @@
                 Owner
             </span>
 
-            <p id="profileBio">
+            <p
+                id="profileBio"
+                class="profile-bio"
+            >
                 Building Afterhours 🔥
             </p>
 
-            <p>
-                🟢 Online
-            </p>
+            <div class="profile-status">
+                <span class="online-dot"></span>
+                Online
+            </div>
 
-            <button id="editProfileButton">
+            <button
+                id="editProfileButton"
+                class="primary-button full-button"
+            >
                 Edit Profile
             </button>
 
@@ -272,11 +415,12 @@
         class="modal hidden"
     >
 
-        <div class="profile-card">
+        <div class="profile-card edit-card">
 
             <button
                 id="closeEditProfile"
                 class="close-button"
+                aria-label="Close editor"
             >
                 ×
             </button>
@@ -284,6 +428,10 @@
             <h2>
                 Edit Profile
             </h2>
+
+            <p>
+                Customize how people see you.
+            </p>
 
 
             <label for="editDisplayName">
@@ -309,7 +457,10 @@
             ></textarea>
 
 
-            <button id="saveProfileButton">
+            <button
+                id="saveProfileButton"
+                class="primary-button full-button"
+            >
                 Save Changes
             </button>
 
@@ -317,10 +468,6 @@
 
     </div>
 
-
-    <!-- =========================
-         JAVASCRIPT
-    ========================== -->
 
     <script src="app.js"></script>
 
