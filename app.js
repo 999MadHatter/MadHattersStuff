@@ -1,5 +1,5 @@
 // ============================================================
-// AFTERHOURS
+// AFTERHOURS APP
 // ============================================================
 
 // =========================
@@ -33,7 +33,7 @@ let currentUser = {
 
 
 // =========================
-// HELPERS
+// HELPER
 // =========================
 
 function get(id) {
@@ -41,16 +41,18 @@ function get(id) {
 }
 
 
+// =========================
+// PAGE SWITCHING
+// =========================
+
 function hideAllPages() {
 
-    const pages = [
+    [
         "landingPage",
         "loginPage",
         "registerPage",
         "chatPage"
-    ];
-
-    pages.forEach(function (id) {
+    ].forEach(function (id) {
 
         const page = get(id);
 
@@ -63,43 +65,27 @@ function hideAllPages() {
 }
 
 
-// =========================
-// LANDING
-// =========================
-
 function showLanding() {
 
     hideAllPages();
 
-    const page = get("landingPage");
-
-    if (page) {
-        page.classList.remove("hidden");
-    }
+    get("landingPage").classList.remove("hidden");
 
 }
 
-
-// =========================
-// LOGIN PAGE
-// =========================
 
 function showLogin() {
 
     hideAllPages();
 
-    const page = get("loginPage");
-
-    if (page) {
-        page.classList.remove("hidden");
-    }
+    get("loginPage").classList.remove("hidden");
 
     setTimeout(function () {
 
-        const email = get("loginEmail");
+        const input = get("loginEmail");
 
-        if (email) {
-            email.focus();
+        if (input) {
+            input.focus();
         }
 
     }, 50);
@@ -107,27 +93,19 @@ function showLogin() {
 }
 
 
-// =========================
-// REGISTER PAGE
-// =========================
-
 function showRegister() {
 
     hideAllPages();
 
-    const page = get("registerPage");
-
-    if (page) {
-        page.classList.remove("hidden");
-    }
+    get("registerPage").classList.remove("hidden");
 
     setTimeout(function () {
 
-        const username =
+        const input =
             get("registerUsername");
 
-        if (username) {
-            username.focus();
+        if (input) {
+            input.focus();
         }
 
     }, 50);
@@ -141,60 +119,39 @@ function showRegister() {
 
 async function login() {
 
-    const emailInput =
-        get("loginEmail");
-
-    const passwordInput =
-        get("loginPassword");
-
-
-    if (!emailInput || !passwordInput) {
-
-        alert(
-            "Login form could not be found."
-        );
-
-        return;
-    }
-
-
     const email =
-        emailInput.value.trim();
+        get("loginEmail").value.trim();
 
     const password =
-        passwordInput.value;
+        get("loginPassword").value;
 
 
     if (!email) {
 
-        alert(
-            "Please enter your email."
-        );
+        alert("Please enter your email.");
 
         return;
+
     }
 
 
     if (!password) {
 
-        alert(
-            "Please enter your password."
-        );
+        alert("Please enter your password.");
 
         return;
+
     }
 
-
-    // Disable button while logging in
 
     const button =
-        document.querySelector(
-            '[onclick="login()"]'
-        );
+        get("loginSubmit");
 
-    if (button) {
-        button.disabled = true;
-    }
+
+    button.disabled = true;
+
+    button.textContent =
+        "Logging in...";
 
 
     try {
@@ -209,38 +166,37 @@ async function login() {
             });
 
 
-        const data = result.data;
+        if (result.error) {
 
-        const error = result.error;
-
-
-        // Wrong credentials
-
-        if (error) {
-
-            console.error(error);
+            console.error(result.error);
 
             alert(
-                "Incorrect email or password."
+                result.error.message
             );
 
             return;
+
         }
 
 
-        if (!data || !data.user) {
+        const user =
+            result.data.user;
+
+
+        if (!user) {
 
             alert(
-                "Login failed. Please try again."
+                "Login failed."
             );
 
             return;
+
         }
 
 
         // Email verification
 
-        if (!data.user.email_confirmed_at) {
+        if (!user.email_confirmed_at) {
 
             await supabaseClient.auth.signOut();
 
@@ -249,10 +205,11 @@ async function login() {
             );
 
             return;
+
         }
 
 
-        // Load profile
+        // Get profile
 
         const profileResult =
             await supabaseClient
@@ -260,30 +217,28 @@ async function login() {
                 .select(
                     "id, username, display_name, bio, role"
                 )
-                .eq("id", data.user.id)
+                .eq("id", user.id)
                 .single();
 
 
-        const profile =
-            profileResult.data;
+        if (profileResult.error) {
 
-        const profileError =
-            profileResult.error;
-
-
-        if (profileError || !profile) {
-
-            console.error(profileError);
+            console.error(
+                profileResult.error
+            );
 
             alert(
                 "Your account exists, but your profile could not be loaded."
             );
 
             return;
+
         }
 
 
-        // Save user
+        const profile =
+            profileResult.data;
+
 
         currentUser = {
 
@@ -311,9 +266,10 @@ async function login() {
 
     } finally {
 
-        if (button) {
-            button.disabled = false;
-        }
+        button.disabled = false;
+
+        button.textContent =
+            "Log In";
 
     }
 
@@ -326,41 +282,20 @@ async function login() {
 
 async function register() {
 
-    const usernameInput =
-        get("registerUsername");
-
-    const emailInput =
-        get("registerEmail");
-
-    const passwordInput =
-        get("registerPassword");
-
-
-    if (
-        !usernameInput ||
-        !emailInput ||
-        !passwordInput
-    ) {
-
-        alert(
-            "Registration form could not be found."
-        );
-
-        return;
-    }
-
-
     const username =
-        usernameInput.value.trim();
+        get("registerUsername")
+            .value
+            .trim();
 
     const email =
-        emailInput.value.trim();
+        get("registerEmail")
+            .value
+            .trim();
 
     const password =
-        passwordInput.value;
+        get("registerPassword")
+            .value;
 
-
-    // Validation
 
     if (!username) {
 
@@ -369,6 +304,7 @@ async function register() {
         );
 
         return;
+
     }
 
 
@@ -379,16 +315,7 @@ async function register() {
         );
 
         return;
-    }
 
-
-    if (username.length > 24) {
-
-        alert(
-            "Username must be 24 characters or less."
-        );
-
-        return;
     }
 
 
@@ -399,6 +326,7 @@ async function register() {
         );
 
         return;
+
     }
 
 
@@ -409,6 +337,7 @@ async function register() {
         );
 
         return;
+
     }
 
 
@@ -419,6 +348,7 @@ async function register() {
         );
 
         return;
+
     }
 
 
@@ -429,24 +359,23 @@ async function register() {
         );
 
         return;
+
     }
 
-
-    // Disable button
 
     const button =
-        document.querySelector(
-            '[onclick="register()"]'
-        );
+        get("registerSubmit");
 
-    if (button) {
-        button.disabled = true;
-    }
+
+    button.disabled = true;
+
+    button.textContent =
+        "Creating account...";
 
 
     try {
 
-        // Check username first
+        // Check username
 
         const usernameCheck =
             await supabaseClient
@@ -467,6 +396,7 @@ async function register() {
             );
 
             return;
+
         }
 
 
@@ -477,10 +407,11 @@ async function register() {
             );
 
             return;
+
         }
 
 
-        // Create Supabase account
+        // Create account
 
         const result =
             await supabaseClient.auth.signUp({
@@ -506,43 +437,42 @@ async function register() {
             });
 
 
-        const data = result.data;
+        if (result.error) {
 
-        const error = result.error;
-
-
-        if (error) {
-
-            console.error(error);
-
-            alert(error.message);
-
-            return;
-        }
-
-
-        if (!data || !data.user) {
+            console.error(
+                result.error
+            );
 
             alert(
-                "Something went wrong creating your account."
+                result.error.message
             );
 
             return;
+
         }
 
 
-        // Email verification required
+        if (!result.data.user) {
+
+            alert(
+                "Account creation failed."
+            );
+
+            return;
+
+        }
+
 
         alert(
-            "Account created! Check your email and click the verification link before logging in."
+            "Account created! Check your email and verify your account before logging in."
         );
 
 
-        // Clear registration form
+        get("registerUsername").value = "";
 
-        usernameInput.value = "";
-        emailInput.value = "";
-        passwordInput.value = "";
+        get("registerEmail").value = "";
+
+        get("registerPassword").value = "";
 
 
         showLogin();
@@ -550,9 +480,10 @@ async function register() {
 
     } finally {
 
-        if (button) {
-            button.disabled = false;
-        }
+        button.disabled = false;
+
+        button.textContent =
+            "Create Account";
 
     }
 
@@ -565,28 +496,19 @@ async function register() {
 
 async function logout() {
 
-    const { error } =
-        await supabaseClient.auth.signOut();
-
-
-    if (error) {
-
-        console.error(error);
-
-        alert(
-            "Unable to log out."
-        );
-
-        return;
-    }
+    await supabaseClient.auth.signOut();
 
 
     currentUser = {
 
         id: null,
+
         username: "",
+
         displayName: "",
+
         bio: "",
+
         role: "Member"
 
     };
@@ -598,45 +520,36 @@ async function logout() {
 
 
 // =========================
-// SHOW CHAT
+// CHAT
 // =========================
 
 function showChat() {
 
     hideAllPages();
 
-    const page =
-        get("chatPage");
-
-    if (page) {
-        page.classList.remove("hidden");
-    }
+    get("chatPage")
+        .classList
+        .remove("hidden");
 
 
     updateUser();
 
     updateOnlineUsers();
 
-
-    setTimeout(function () {
-
-        const input =
-            get("messageInput");
-
-        if (input) {
-            input.focus();
-        }
-
-    }, 50);
-
 }
 
 
 // =========================
-// UPDATE USER UI
+// USER UI
 // =========================
 
 function updateUser() {
+
+    const name =
+        currentUser.displayName ||
+        currentUser.username ||
+        "User";
+
 
     const topUsername =
         get("topUsername");
@@ -647,6 +560,9 @@ function updateUser() {
     const profileAvatar =
         get("profileAvatar");
 
+    const sidebarAvatar =
+        get("sidebarAvatar");
+
     const profileBio =
         get("profileBio");
 
@@ -654,8 +570,7 @@ function updateUser() {
     if (topUsername) {
 
         topUsername.textContent =
-            currentUser.displayName ||
-            currentUser.username;
+            name;
 
     }
 
@@ -663,21 +578,7 @@ function updateUser() {
     if (profileName) {
 
         profileName.textContent =
-            currentUser.displayName ||
-            currentUser.username;
-
-    }
-
-
-    if (profileAvatar) {
-
-        const name =
-            currentUser.displayName ||
-            currentUser.username ||
-            "?";
-
-        profileAvatar.textContent =
-            name.charAt(0).toUpperCase();
+            name;
 
     }
 
@@ -687,6 +588,26 @@ function updateUser() {
         profileBio.textContent =
             currentUser.bio ||
             "No bio yet.";
+
+    }
+
+
+    if (profileAvatar) {
+
+        profileAvatar.textContent =
+            name
+                .charAt(0)
+                .toUpperCase();
+
+    }
+
+
+    if (sidebarAvatar) {
+
+        sidebarAvatar.textContent =
+            name
+                .charAt(0)
+                .toUpperCase();
 
     }
 
@@ -709,11 +630,6 @@ function updateOnlineUsers() {
 
 
     container.innerHTML = "";
-
-
-    if (!currentUser.displayName) {
-        return;
-    }
 
 
     const user =
@@ -753,125 +669,46 @@ function updateOnlineUsers() {
 
 function openProfile() {
 
-    updateUser();
-
-
-    const modal =
-        get("profileModal");
-
-
-    if (modal) {
-        modal.classList.remove("hidden");
-    }
+    get("profileModal")
+        .classList
+        .remove("hidden");
 
 }
 
 
 function closeProfile() {
 
-    const modal =
-        get("profileModal");
-
-
-    if (modal) {
-        modal.classList.add("hidden");
-    }
+    get("profileModal")
+        .classList
+        .add("hidden");
 
 }
 
-
-function closeProfileOutside(event) {
-
-    const modal =
-        get("profileModal");
-
-
-    if (
-        modal &&
-        event.target === modal
-    ) {
-
-        closeProfile();
-
-    }
-
-}
-
-
-// =========================
-// EDIT PROFILE
-// =========================
 
 function openEditProfile() {
 
-    const nameInput =
-        get("editName");
+    get("editName").value =
+        currentUser.displayName;
 
-    const bioInput =
-        get("editBio");
-
-
-    if (nameInput) {
-
-        nameInput.value =
-            currentUser.displayName;
-
-    }
-
-
-    if (bioInput) {
-
-        bioInput.value =
-            currentUser.bio;
-
-    }
+    get("editBio").value =
+        currentUser.bio;
 
 
     closeProfile();
 
 
-    const modal =
-        get("editProfileModal");
-
-
-    if (modal) {
-
-        modal.classList.remove("hidden");
-
-    }
+    get("editProfileModal")
+        .classList
+        .remove("hidden");
 
 }
 
 
 function closeEditProfile() {
 
-    const modal =
-        get("editProfileModal");
-
-
-    if (modal) {
-
-        modal.classList.add("hidden");
-
-    }
-
-}
-
-
-function closeEditOutside(event) {
-
-    const modal =
-        get("editProfileModal");
-
-
-    if (
-        modal &&
-        event.target === modal
-    ) {
-
-        closeEditProfile();
-
-    }
+    get("editProfileModal")
+        .classList
+        .add("hidden");
 
 }
 
@@ -882,28 +719,15 @@ function closeEditOutside(event) {
 
 async function saveProfile() {
 
-    const nameInput =
-        get("editName");
-
-    const bioInput =
-        get("editBio");
-
-
-    if (!nameInput || !bioInput) {
-
-        alert(
-            "Profile editor could not be found."
-        );
-
-        return;
-    }
-
-
     const displayName =
-        nameInput.value.trim();
+        get("editName")
+            .value
+            .trim();
 
     const bio =
-        bioInput.value.trim();
+        get("editBio")
+            .value
+            .trim();
 
 
     if (!displayName) {
@@ -913,16 +737,18 @@ async function saveProfile() {
         );
 
         return;
+
     }
 
 
     if (!currentUser.id) {
 
         alert(
-            "You must be logged in."
+            "You aren't logged in."
         );
 
         return;
+
     }
 
 
@@ -951,10 +777,11 @@ async function saveProfile() {
         );
 
         alert(
-            "Unable to save your profile."
+            "Unable to save profile."
         );
 
         return;
+
     }
 
 
@@ -973,14 +800,14 @@ async function saveProfile() {
 
 
     alert(
-        "Profile saved."
+        "Profile saved!"
     );
 
 }
 
 
 // =========================
-// SEND MESSAGE
+// MESSAGES
 // =========================
 
 function sendMessage() {
@@ -988,14 +815,8 @@ function sendMessage() {
     const input =
         get("messageInput");
 
-
     const messages =
         get("messages");
-
-
-    if (!input || !messages) {
-        return;
-    }
 
 
     const text =
@@ -1032,14 +853,14 @@ function sendMessage() {
         "avatar";
 
 
-    const displayName =
+    const name =
         currentUser.displayName ||
         currentUser.username ||
         "User";
 
 
     avatar.textContent =
-        displayName
+        name
             .charAt(0)
             .toUpperCase();
 
@@ -1052,7 +873,7 @@ function sendMessage() {
         document.createElement("strong");
 
     username.textContent =
-        displayName;
+        name;
 
 
     const role =
@@ -1062,8 +883,7 @@ function sendMessage() {
         "role";
 
     role.textContent =
-        currentUser.role ||
-        "Member";
+        currentUser.role;
 
 
     const textElement =
@@ -1073,58 +893,25 @@ function sendMessage() {
         text;
 
 
-    content.appendChild(
-        username
-    );
+    content.appendChild(username);
 
-    content.appendChild(
-        role
-    );
+    content.appendChild(role);
 
-    content.appendChild(
-        textElement
-    );
+    content.appendChild(textElement);
 
 
-    message.appendChild(
-        avatar
-    );
+    message.appendChild(avatar);
 
-    message.appendChild(
-        content
-    );
+    message.appendChild(content);
 
 
-    messages.appendChild(
-        message
-    );
+    messages.appendChild(message);
 
 
     input.value = "";
 
     messages.scrollTop =
         messages.scrollHeight;
-
-    input.focus();
-
-}
-
-
-// =========================
-// ENTER TO SEND
-// =========================
-
-function handleEnter(event) {
-
-    if (
-        event.key === "Enter"
-    ) {
-
-        event.preventDefault();
-
-        sendMessage();
-
-    }
 
 }
 
@@ -1145,7 +932,6 @@ const rooms = {
 
     },
 
-
     gaming: {
 
         title:
@@ -1155,7 +941,6 @@ const rooms = {
             "Talk about games."
 
     },
-
 
     music: {
 
@@ -1186,9 +971,9 @@ function changeRoom(
 
     document
         .querySelectorAll(".room")
-        .forEach(function (item) {
+        .forEach(function (roomButton) {
 
-            item.classList.remove(
+            roomButton.classList.remove(
                 "active"
             );
 
@@ -1204,195 +989,205 @@ function changeRoom(
     }
 
 
-    const roomTitle =
-        get("roomTitle");
+    get("roomTitle").textContent =
+        room.title;
 
-    const roomDescription =
-        get("roomDescription");
+    get("roomDescription").textContent =
+        room.description;
 
-    const messageInput =
-        get("messageInput");
-
-    const messages =
-        get("messages");
-
-
-    if (roomTitle) {
-
-        roomTitle.textContent =
-            room.title;
-
-    }
+    get("messageInput").placeholder =
+        "Message " +
+        room.title.substring(2) +
+        "...";
 
 
-    if (roomDescription) {
+    get("messages").innerHTML = `
 
-        roomDescription.textContent =
-            room.description;
+        <div class="welcome-message">
 
-    }
+            <div class="welcome-icon">
+                ${room.title.substring(0, 2)}
+            </div>
 
+            <h3>
+                Welcome to ${room.title.substring(2)}
+            </h3>
 
-    if (messageInput) {
+            <p>
+                Send the first message.
+            </p>
 
-        messageInput.placeholder =
-            "Message " +
-            room.title.substring(2) +
-            "...";
+        </div>
 
-    }
-
-
-    if (!messages) {
-        return;
-    }
-
-
-    messages.innerHTML = "";
-
-
-    const welcome =
-        document.createElement("div");
-
-    welcome.className =
-        "welcome-message";
-
-
-    const icon =
-        document.createElement("div");
-
-    icon.className =
-        "welcome-icon";
-
-    icon.textContent =
-        room.title.substring(
-            0,
-            2
-        );
-
-
-    const title =
-        document.createElement("h3");
-
-    title.textContent =
-        "Welcome to " +
-        room.title.substring(2);
-
-
-    const description =
-        document.createElement("p");
-
-    description.textContent =
-        "Send the first message.";
-
-
-    welcome.appendChild(icon);
-
-    welcome.appendChild(title);
-
-    welcome.appendChild(description);
-
-
-    messages.appendChild(
-        welcome
-    );
+    `;
 
 }
 
 
 // =========================
-// BUTTON EVENT FALLBACKS
-// =========================
-//
-// These make the navigation work even if
-// your HTML buttons don't have onclick="".
+// BUTTONS
 // =========================
 
 function setupButtons() {
 
-    const loginButton =
-        get("loginButton");
+    // Landing
 
-    const registerButton =
-        get("registerButton");
-
-    const backFromLogin =
-        get("backFromLogin");
-
-    const backFromRegister =
-        get("backFromRegister");
-
-    const loginSubmit =
-        get("loginSubmit");
-
-    const registerSubmit =
-        get("registerSubmit");
-
-
-    if (loginButton) {
-
-        loginButton.addEventListener(
+    get("loginButton")
+        .addEventListener(
             "click",
             showLogin
         );
 
-    }
 
-
-    if (registerButton) {
-
-        registerButton.addEventListener(
+    get("registerButton")
+        .addEventListener(
             "click",
             showRegister
         );
 
-    }
 
+    // Login
 
-    if (backFromLogin) {
-
-        backFromLogin.addEventListener(
+    get("backFromLogin")
+        .addEventListener(
             "click",
             showLanding
         );
 
-    }
+
+    get("loginToRegister")
+        .addEventListener(
+            "click",
+            showRegister
+        );
 
 
-    if (backFromRegister) {
+    get("loginForm")
+        .addEventListener(
+            "submit",
+            function (event) {
 
-        backFromRegister.addEventListener(
+                event.preventDefault();
+
+                login();
+
+            }
+        );
+
+
+    // Register
+
+    get("backFromRegister")
+        .addEventListener(
             "click",
             showLanding
         );
 
-    }
 
-
-    if (loginSubmit) {
-
-        loginSubmit.addEventListener(
+    get("registerToLogin")
+        .addEventListener(
             "click",
-            login
+            showLogin
         );
 
-    }
 
+    get("registerForm")
+        .addEventListener(
+            "submit",
+            function (event) {
 
-    if (registerSubmit) {
+                event.preventDefault();
 
-        registerSubmit.addEventListener(
-            "click",
-            register
+                register();
+
+            }
         );
 
-    }
+
+    // Chat
+
+    get("logoutButton")
+        .addEventListener(
+            "click",
+            logout
+        );
+
+
+    get("profileButton")
+        .addEventListener(
+            "click",
+            openProfile
+        );
+
+
+    get("closeProfileButton")
+        .addEventListener(
+            "click",
+            closeProfile
+        );
+
+
+    get("editProfileButton")
+        .addEventListener(
+            "click",
+            openEditProfile
+        );
+
+
+    get("closeEditProfileButton")
+        .addEventListener(
+            "click",
+            closeEditProfile
+        );
+
+
+    get("saveProfileButton")
+        .addEventListener(
+            "click",
+            saveProfile
+        );
+
+
+    // Message form
+
+    get("messageForm")
+        .addEventListener(
+            "submit",
+            function (event) {
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
+        );
+
+
+    // Rooms
+
+    document
+        .querySelectorAll(".room")
+        .forEach(function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    changeRoom(
+                        button.dataset.room,
+                        button
+                    );
+
+                }
+            );
+
+        });
 
 }
 
 
 // =========================
-// CHECK EXISTING SESSION
+// SESSION
 // =========================
 
 async function checkSession() {
@@ -1403,13 +1198,13 @@ async function checkSession() {
 
     if (
         result.error ||
-        !result.data ||
         !result.data.session
     ) {
 
         showLanding();
 
         return;
+
     }
 
 
@@ -1424,6 +1219,7 @@ async function checkSession() {
         showLanding();
 
         return;
+
     }
 
 
@@ -1442,15 +1238,12 @@ async function checkSession() {
         !profileResult.data
     ) {
 
-        console.error(
-            profileResult.error
-        );
-
         await supabaseClient.auth.signOut();
 
         showLanding();
 
         return;
+
     }
 
 
@@ -1484,7 +1277,7 @@ async function checkSession() {
 
 
 // =========================
-// START AFTERHOURS
+// START
 // =========================
 
 setupButtons();
