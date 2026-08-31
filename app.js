@@ -1,80 +1,160 @@
 ```javascript
 // =========================
 // AFTERHOURS
+// FRONTEND PROTOTYPE
 // =========================
 
-// ---------- PAGES ----------
 
-const landingPage = document.getElementById("landingPage");
-const loginPage = document.getElementById("loginPage");
-const signupPage = document.getElementById("signupPage");
-const chatPage = document.getElementById("chatPage");
+// =========================
+// PAGE ELEMENTS
+// =========================
 
-// ---------- LANDING BUTTONS ----------
+const landingPage =
+    document.getElementById("landingPage");
 
-const loginButton = document.getElementById("loginButton");
-const signupButton = document.getElementById("signupButton");
+const loginPage =
+    document.getElementById("loginPage");
 
-// ---------- BACK BUTTONS ----------
+const signupPage =
+    document.getElementById("signupPage");
 
-const backFromLogin = document.getElementById("backFromLogin");
-const backFromSignup = document.getElementById("backFromSignup");
+const chatPage =
+    document.getElementById("chatPage");
 
-// ---------- LOGIN / REGISTER ----------
 
-const enterChatButton = document.getElementById("enterChatButton");
-const createAccountButton = document.getElementById("createAccountButton");
+// =========================
+// LANDING BUTTONS
+// =========================
 
-const loginUsername = document.getElementById("loginUsername");
-const loginPassword = document.getElementById("loginPassword");
+const loginButton =
+    document.getElementById("loginButton");
 
-const signupUsername = document.getElementById("signupUsername");
-const signupEmail = document.getElementById("signupEmail");
-const signupPassword = document.getElementById("signupPassword");
+const signupButton =
+    document.getElementById("signupButton");
 
-// ---------- USER ----------
 
-const currentUser = document.getElementById("topUsername");
-const profileButton = document.getElementById("profileButton");
+// =========================
+// BACK BUTTONS
+// =========================
 
-// ---------- CHAT ----------
+const backFromLogin =
+    document.getElementById("backFromLogin");
 
-const messageInput = document.getElementById("messageInput");
-const sendButton = document.getElementById("sendButton");
-const messages = document.getElementById("messages");
+const backFromSignup =
+    document.getElementById("backFromSignup");
 
-const rooms = document.querySelectorAll(".room");
 
-const chatTitle = document.getElementById("chatTitle");
-const chatDescription = document.getElementById("chatDescription");
+// =========================
+// AUTH INPUTS
+// =========================
 
-// ---------- ONLINE USERS ----------
+const loginUsername =
+    document.getElementById("loginUsername");
 
-const onlineTitle = document.getElementById("onlineTitle");
-const onlineUsers = document.getElementById("onlineUsers");
+const loginPassword =
+    document.getElementById("loginPassword");
 
-// ---------- PROFILE ----------
+const signupUsername =
+    document.getElementById("signupUsername");
 
-const profileModal = document.getElementById("profileModal");
-const editProfileModal = document.getElementById("editProfileModal");
+const signupEmail =
+    document.getElementById("signupEmail");
 
-const closeProfile = document.getElementById("closeProfile");
-const closeEditProfile = document.getElementById("closeEditProfile");
+const signupPassword =
+    document.getElementById("signupPassword");
 
-const editProfileButton =
-    document.getElementById("editProfileButton");
 
-const saveProfileButton =
-    document.getElementById("saveProfileButton");
+// =========================
+// AUTH BUTTONS
+// =========================
 
-const profileName =
-    document.getElementById("profileName");
+const enterChatButton =
+    document.getElementById("enterChatButton");
+
+const createAccountButton =
+    document.getElementById("createAccountButton");
+
+
+// =========================
+// USER DISPLAY
+// =========================
+
+const topUsername =
+    document.getElementById("topUsername");
+
+
+// =========================
+// CHAT
+// =========================
+
+const messageInput =
+    document.getElementById("messageInput");
+
+const sendButton =
+    document.getElementById("sendButton");
+
+const messages =
+    document.getElementById("messages");
+
+const rooms =
+    document.querySelectorAll(".room");
+
+const chatTitle =
+    document.getElementById("chatTitle");
+
+const chatDescription =
+    document.getElementById("chatDescription");
+
+
+// =========================
+// ONLINE USERS
+// =========================
+
+const onlineTitle =
+    document.getElementById("onlineTitle");
+
+const onlineUsers =
+    document.getElementById("onlineUsers");
+
+
+// =========================
+// PROFILE
+// =========================
+
+const profileButton =
+    document.getElementById("profileButton");
+
+const profileModal =
+    document.getElementById("profileModal");
+
+const closeProfile =
+    document.getElementById("closeProfile");
 
 const profileAvatar =
     document.getElementById("profileAvatar");
 
+const profileName =
+    document.getElementById("profileName");
+
 const profileBio =
     document.getElementById("profileBio");
+
+const profileRole =
+    document.getElementById("profileRole");
+
+
+// =========================
+// EDIT PROFILE
+// =========================
+
+const editProfileButton =
+    document.getElementById("editProfileButton");
+
+const editProfileModal =
+    document.getElementById("editProfileModal");
+
+const closeEditProfile =
+    document.getElementById("closeEditProfile");
 
 const editDisplayName =
     document.getElementById("editDisplayName");
@@ -82,16 +162,60 @@ const editDisplayName =
 const editBio =
     document.getElementById("editBio");
 
+const saveProfileButton =
+    document.getElementById("saveProfileButton");
+
 
 // =========================
-// USER DATA
+// USER
 // =========================
 
 let user = {
+
     username: "MadHatter",
+
     displayName: "MadHatter",
+
     bio: "Building Afterhours 🔥",
+
     role: "Owner"
+
+};
+
+
+// =========================
+// ROOMS
+// =========================
+
+const roomInfo = {
+
+    general: {
+
+        title: "💬 General",
+
+        description:
+            "Talk. Connect. Chill."
+
+    },
+
+    gaming: {
+
+        title: "🎮 Gaming",
+
+        description:
+            "Talk about games."
+
+    },
+
+    music: {
+
+        title: "🎵 Music",
+
+        description:
+            "Share music and discover new stuff."
+
+    }
+
 };
 
 
@@ -102,21 +226,27 @@ let user = {
 function showPage(page) {
 
     landingPage.classList.add("hidden");
+
     loginPage.classList.add("hidden");
+
     signupPage.classList.add("hidden");
+
     chatPage.classList.add("hidden");
 
     page.classList.remove("hidden");
+
 }
 
 
 // =========================
-// LANDING PAGE
+// LANDING
 // =========================
 
 loginButton.addEventListener("click", () => {
 
     showPage(loginPage);
+
+    loginUsername.focus();
 
 });
 
@@ -125,11 +255,13 @@ signupButton.addEventListener("click", () => {
 
     showPage(signupPage);
 
+    signupUsername.focus();
+
 });
 
 
 // =========================
-// BACK BUTTONS
+// BACK
 // =========================
 
 backFromLogin.addEventListener("click", () => {
@@ -147,117 +279,12 @@ backFromSignup.addEventListener("click", () => {
 
 
 // =========================
-// TEMP LOGIN
-// ==========================
-
-enterChatButton.addEventListener("click", () => {
-
-    const username =
-        loginUsername.value.trim();
-
-    const password =
-        loginPassword.value;
-
-    if (!username) {
-
-        alert("Please enter a username.");
-
-        return;
-
-    }
-
-    if (!password) {
-
-        alert("Please enter your password.");
-
-        return;
-
-    }
-
-    user.username = username;
-
-    user.displayName = username;
-
-    updateUserDisplay();
-
-    showPage(chatPage);
-
-    messageInput.focus();
-
-    updateOnlineUsers();
-
-});
-
-
-// =========================
-// TEMP REGISTER
+// UPDATE USER UI
 // =========================
 
-createAccountButton.addEventListener("click", () => {
+function updateUserUI() {
 
-    const username =
-        signupUsername.value.trim();
-
-    const email =
-        signupEmail.value.trim();
-
-    const password =
-        signupPassword.value;
-
-    if (!username) {
-
-        alert("Please choose a username.");
-
-        return;
-
-    }
-
-    if (!email) {
-
-        alert("Please enter an email.");
-
-        return;
-
-    }
-
-    if (!password) {
-
-        alert("Please choose a password.");
-
-        return;
-
-    }
-
-    if (password.length < 8) {
-
-        alert("Password must be at least 8 characters.");
-
-        return;
-
-    }
-
-    user.username = username;
-
-    user.displayName = username;
-
-    updateUserDisplay();
-
-    showPage(chatPage);
-
-    messageInput.focus();
-
-    updateOnlineUsers();
-
-});
-
-
-// =========================
-// UPDATE USER DISPLAY
-// =========================
-
-function updateUserDisplay() {
-
-    currentUser.textContent =
+    topUsername.textContent =
         user.displayName;
 
     profileName.textContent =
@@ -271,7 +298,127 @@ function updateUserDisplay() {
     profileBio.textContent =
         user.bio;
 
+    profileRole.textContent =
+        user.role;
+
 }
+
+
+// =========================
+// LOGIN
+// =========================
+
+enterChatButton.addEventListener("click", () => {
+
+    const username =
+        loginUsername.value.trim();
+
+    const password =
+        loginPassword.value;
+
+
+    if (!username) {
+
+        alert("Please enter your username.");
+
+        return;
+
+    }
+
+
+    if (!password) {
+
+        alert("Please enter your password.");
+
+        return;
+
+    }
+
+
+    user.username = username;
+
+    user.displayName = username;
+
+
+    updateUserUI();
+
+    showPage(chatPage);
+
+    updateOnlineUsers();
+
+    messageInput.focus();
+
+});
+
+
+// =========================
+// REGISTER
+// =========================
+
+createAccountButton.addEventListener("click", () => {
+
+    const username =
+        signupUsername.value.trim();
+
+    const email =
+        signupEmail.value.trim();
+
+    const password =
+        signupPassword.value;
+
+
+    if (!username) {
+
+        alert("Please choose a username.");
+
+        return;
+
+    }
+
+
+    if (!email) {
+
+        alert("Please enter your email.");
+
+        return;
+
+    }
+
+
+    if (!password) {
+
+        alert("Please choose a password.");
+
+        return;
+
+    }
+
+
+    if (password.length < 8) {
+
+        alert(
+            "Your password must be at least 8 characters."
+        );
+
+        return;
+
+    }
+
+
+    user.username = username;
+
+    user.displayName = username;
+
+
+    updateUserUI();
+
+    showPage(chatPage);
+
+    updateOnlineUsers();
+
+    messageInput.focus();
+
+});
 
 
 // =========================
@@ -280,7 +427,7 @@ function updateUserDisplay() {
 
 profileButton.addEventListener("click", () => {
 
-    updateUserDisplay();
+    updateUserUI();
 
     profileModal.classList.remove("hidden");
 
@@ -306,6 +453,8 @@ editProfileButton.addEventListener("click", () => {
 
     editProfileModal.classList.remove("hidden");
 
+    editDisplayName.focus();
+
 });
 
 
@@ -324,13 +473,17 @@ saveProfileButton.addEventListener("click", () => {
     const newBio =
         editBio.value.trim();
 
+
     if (!newName) {
 
-        alert("Display name cannot be empty.");
+        alert(
+            "Display name cannot be empty."
+        );
 
         return;
 
     }
+
 
     user.displayName =
         newName;
@@ -338,11 +491,46 @@ saveProfileButton.addEventListener("click", () => {
     user.bio =
         newBio || "No bio yet.";
 
-    updateUserDisplay();
+
+    updateUserUI();
 
     editProfileModal.classList.add("hidden");
 
 });
+
+
+// =========================
+// CLOSE MODALS
+// =========================
+
+profileModal.addEventListener(
+    "click",
+    event => {
+
+        if (event.target === profileModal) {
+
+            profileModal.classList.add("hidden");
+
+        }
+
+    }
+);
+
+
+editProfileModal.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target === editProfileModal
+        ) {
+
+            editProfileModal.classList.add("hidden");
+
+        }
+
+    }
+);
 
 
 // =========================
@@ -354,9 +542,25 @@ function sendMessage() {
     const text =
         messageInput.value.trim();
 
+
     if (!text) {
         return;
     }
+
+
+    // Remove empty-chat message
+
+    const emptyChat =
+        messages.querySelector(".empty-chat");
+
+    if (emptyChat) {
+
+        emptyChat.remove();
+
+    }
+
+
+    // Message container
 
     const message =
         document.createElement("div");
@@ -399,11 +603,17 @@ function sendMessage() {
 
     role.className = "role";
 
+    if (user.role === "Owner") {
+
+        role.classList.add("owner");
+
+    }
+
     role.textContent =
         user.role;
 
 
-    // Message
+    // Message text
 
     const messageText =
         document.createElement("p");
@@ -427,7 +637,7 @@ function sendMessage() {
     messages.appendChild(message);
 
 
-    // Clear input
+    // Reset
 
     messageInput.value = "";
 
@@ -439,7 +649,9 @@ function sendMessage() {
 }
 
 
-// Send button
+// =========================
+// SEND BUTTON
+// =========================
 
 sendButton.addEventListener(
     "click",
@@ -447,13 +659,17 @@ sendButton.addEventListener(
 );
 
 
-// Enter key
+// =========================
+// ENTER TO SEND
+// =========================
 
 messageInput.addEventListener(
     "keydown",
     event => {
 
         if (event.key === "Enter") {
+
+            event.preventDefault();
 
             sendMessage();
 
@@ -464,40 +680,8 @@ messageInput.addEventListener(
 
 
 // =========================
-// CHAT ROOMS
+// ROOM SWITCHING
 // =========================
-
-const roomInfo = {
-
-    "💬 General": {
-
-        title: "💬 General",
-
-        description:
-            "Talk. Connect. Chill."
-
-    },
-
-    "🎮 Gaming": {
-
-        title: "🎮 Gaming",
-
-        description:
-            "Talk about games."
-
-    },
-
-    "🎵 Music": {
-
-        title: "🎵 Music",
-
-        description:
-            "Share music and discover new stuff."
-
-    }
-
-};
-
 
 rooms.forEach(room => {
 
@@ -511,13 +695,16 @@ rooms.forEach(room => {
 
             });
 
+
             room.classList.add("active");
 
 
+            const roomId =
+                room.dataset.room;
+
+
             const info =
-                roomInfo[
-                    room.textContent.trim()
-                ];
+                roomInfo[roomId];
 
 
             if (!info) {
@@ -532,12 +719,57 @@ rooms.forEach(room => {
                 info.description;
 
             messageInput.placeholder =
-                `Message ${room.textContent.trim()}...`;
+                `Message ${info.title}...`;
 
 
-            // Empty room
+            // Clear room
 
             messages.innerHTML = "";
+
+
+            // Show empty state
+
+            const emptyChat =
+                document.createElement("div");
+
+            emptyChat.className =
+                "empty-chat";
+
+
+            const icon =
+                document.createElement("div");
+
+            icon.textContent =
+                roomId === "general"
+                    ? "💬"
+                    : roomId === "gaming"
+                        ? "🎮"
+                        : "🎵";
+
+
+            const title =
+                document.createElement("h3");
+
+            title.textContent =
+                `Welcome to ${info.title.substring(2)}`;
+
+
+            const description =
+                document.createElement("p");
+
+            description.textContent =
+                "Be the first person to send a message.";
+
+
+            emptyChat.appendChild(icon);
+
+            emptyChat.appendChild(title);
+
+            emptyChat.appendChild(description);
+
+            messages.appendChild(emptyChat);
+
+            messageInput.focus();
 
         }
     );
@@ -558,21 +790,37 @@ function updateOnlineUsers() {
         document.createElement("div");
 
     userElement.className =
-        "online profile-link";
+        "online";
 
-    userElement.textContent =
-        `🟢 ${user.displayName}`;
+
+    const dot =
+        document.createElement("span");
+
+    dot.className =
+        "online-dot";
+
+
+    const name =
+        document.createElement("span");
+
+    name.textContent =
+        user.displayName;
+
+
+    userElement.appendChild(dot);
+
+    userElement.appendChild(name);
 
 
     userElement.addEventListener(
         "click",
         () => {
 
+            updateUserUI();
+
             profileModal.classList.remove(
                 "hidden"
             );
-
-            updateUserDisplay();
 
         }
     );
@@ -585,45 +833,6 @@ function updateOnlineUsers() {
         "ONLINE — 1";
 
 }
-
-
-// =========================
-// CLOSE MODALS BY CLICKING
-// OUTSIDE THE CARD
-// =========================
-
-profileModal.addEventListener(
-    "click",
-    event => {
-
-        if (event.target === profileModal) {
-
-            profileModal.classList.add(
-                "hidden"
-            );
-
-        }
-
-    }
-);
-
-
-editProfileModal.addEventListener(
-    "click",
-    event => {
-
-        if (
-            event.target === editProfileModal
-        ) {
-
-            editProfileModal.classList.add(
-                "hidden"
-            );
-
-        }
-
-    }
-);
 
 
 // =========================
