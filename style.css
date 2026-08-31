@@ -1,34 +1,25 @@
 ```css
-/* =========================
-   GLOBAL
-========================= */
-
 * {
     box-sizing: border-box;
 }
 
 html,
 body {
-    margin: 0;
     width: 100%;
     height: 100%;
+    margin: 0;
+}
 
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-
-    background: #0b0b10;
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #0a0a0f;
     color: #ffffff;
 }
 
 button,
 input,
 textarea {
-    font: inherit;
+    font-family: inherit;
 }
 
 button {
@@ -41,156 +32,114 @@ button {
 
 
 /* =========================
-   LANDING PAGE
+   LANDING
 ========================= */
 
-.page {
+.landing {
     min-height: 100vh;
-}
 
-.landing-page {
     display: flex;
-
     align-items: center;
     justify-content: center;
 
-    padding: 30px;
+    padding: 20px;
 
     background:
         radial-gradient(
-            circle at top,
-            #24213d 0%,
-            #11111a 40%,
-            #09090d 100%
+            circle at 50% 0%,
+            #292442 0%,
+            #12111a 45%,
+            #08080c 100%
         );
 }
 
-.landing-container {
+.landing-box {
     width: 100%;
-    max-width: 560px;
+    max-width: 550px;
 
     text-align: center;
 }
 
-.brand-icon {
+.logo-big {
     width: 90px;
     height: 90px;
-
-    margin: 0 auto 25px;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    border-radius: 24px;
+    margin: 0 auto 25px;
 
-    background: #191827;
+    border-radius: 25px;
 
-    border: 1px solid #302e47;
+    background: #191824;
+
+    border: 1px solid #302d43;
 
     font-size: 42px;
 
     box-shadow:
-        0 20px 60px rgba(0, 0, 0, 0.4);
+        0 25px 70px rgba(0, 0, 0, 0.45);
 }
 
-.landing-container h1 {
+.landing-box h1 {
     margin: 0;
 
-    font-size: clamp(48px, 8vw, 78px);
+    font-size: 68px;
 
-    letter-spacing: -3px;
+    letter-spacing: -4px;
 }
 
-.tagline {
-    margin: 8px 0 0;
+.landing-box > p {
+    margin: 12px 0 35px;
 
-    font-size: 21px;
+    color: #9996a8;
 
-    color: #b5b2c7;
+    font-size: 19px;
 }
 
-.landing-description {
-    max-width: 430px;
-
-    margin: 20px auto 35px;
-
-    line-height: 1.6;
-
-    color: #858295;
-}
-
-.landing-buttons {
+.landing-actions {
     display: flex;
-
-    justify-content: center;
 
     gap: 12px;
 
-    flex-wrap: wrap;
+    justify-content: center;
 }
 
-
-/* =========================
-   BUTTONS
-========================= */
-
-.primary-button,
-.secondary-button {
+.btn {
     border: none;
 
     border-radius: 10px;
 
-    padding: 13px 22px;
+    padding: 13px 24px;
+
+    font-size: 14px;
 
     font-weight: 700;
 
     transition:
-        transform 0.15s,
-        opacity 0.15s;
+        transform 0.15s ease,
+        opacity 0.15s ease;
 }
 
-.primary-button {
-    background: #ffffff;
-
-    color: #101014;
-}
-
-.secondary-button {
-    background: #20202b;
-
-    color: #ffffff;
-
-    border: 1px solid #343442;
-}
-
-.primary-button:hover,
-.secondary-button:hover {
+.btn:hover {
     transform: translateY(-2px);
 
     opacity: 0.9;
 }
 
-.full-button {
-    width: 100%;
+.primary {
+    background: #ffffff;
 
-    margin-top: 20px;
+    color: #101014;
 }
 
-.text-button {
-    margin-top: 15px;
+.secondary {
+    background: #1d1c26;
 
-    border: none;
-
-    background: transparent;
-
-    color: #aaa7ba;
-
-    cursor: pointer;
-}
-
-.text-button:hover {
     color: #ffffff;
+
+    border: 1px solid #353341;
 }
 
 
@@ -199,71 +148,75 @@ button {
 ========================= */
 
 .auth-page {
-    display: flex;
+    min-height: 100vh;
 
+    display: flex;
     align-items: center;
     justify-content: center;
 
-    padding: 25px;
+    padding: 20px;
 
     background:
         radial-gradient(
             circle at top,
-            #201e35,
-            #0b0b10 60%
+            #211e35,
+            #09090d 65%
         );
 }
 
-.auth-card {
+.auth-box {
     width: 100%;
-    max-width: 420px;
+    max-width: 410px;
 
-    padding: 38px;
+    padding: 35px;
 
     border-radius: 18px;
 
     background: #14141b;
 
-    border: 1px solid #292933;
+    border: 1px solid #2c2b36;
 
     box-shadow:
-        0 30px 80px rgba(0, 0, 0, 0.45);
+        0 30px 80px rgba(0, 0, 0, 0.5);
 }
 
-.auth-logo {
-    font-size: 34px;
-
-    margin-bottom: 10px;
-}
-
-.auth-card h1 {
-    margin: 0 0 8px;
-
+.small-logo {
     font-size: 30px;
+
+    margin-bottom: 18px;
 }
 
-.auth-card > p {
-    margin: 0 0 28px;
+.auth-box h2 {
+    margin: 0 0 7px;
 
-    color: #898695;
+    font-size: 28px;
 }
 
-.auth-card label {
+.muted {
+    margin: 0 0 25px;
+
+    color: #777482;
+}
+
+.auth-box label,
+.edit-box label {
     display: block;
 
     margin: 17px 0 7px;
 
-    font-size: 14px;
+    color: #aaa7b4;
 
-    color: #c6c3d0;
+    font-size: 13px;
 }
 
-.auth-card input {
+.auth-box input,
+.edit-box input,
+.edit-box textarea {
     width: 100%;
 
     padding: 13px 14px;
 
-    border: 1px solid #33333f;
+    border: 1px solid #35343f;
 
     border-radius: 9px;
 
@@ -274,13 +227,39 @@ button {
     color: #ffffff;
 }
 
-.auth-card input:focus {
-    border-color: #686579;
+.auth-box input:focus,
+.edit-box input:focus,
+.edit-box textarea:focus {
+    border-color: #696677;
+}
+
+.full {
+    width: 100%;
+
+    margin-top: 20px;
+}
+
+.back-btn {
+    display: block;
+
+    margin: 17px auto 0;
+
+    border: none;
+
+    background: transparent;
+
+    color: #85828f;
+
+    font-size: 13px;
+}
+
+.back-btn:hover {
+    color: #ffffff;
 }
 
 
 /* =========================
-   CHAT APP
+   CHAT
 ========================= */
 
 .chat-page {
@@ -299,19 +278,17 @@ button {
     flex-shrink: 0;
 
     display: flex;
-
     align-items: center;
-
     justify-content: space-between;
 
     padding: 0 22px;
 
     background: #111118;
 
-    border-bottom: 1px solid #272730;
+    border-bottom: 1px solid #282731;
 }
 
-.logo {
+.brand {
     display: flex;
 
     align-items: center;
@@ -321,8 +298,8 @@ button {
     font-size: 18px;
 }
 
-.logo span {
-    font-size: 22px;
+.brand span {
+    font-size: 21px;
 }
 
 .user-button {
@@ -344,12 +321,12 @@ button {
 }
 
 .user-button:hover {
-    background: #1c1c25;
+    background: #1b1a22;
 
-    border-color: #2d2d38;
+    border-color: #302f39;
 }
 
-.online-dot {
+.status-dot {
     width: 9px;
     height: 9px;
 
@@ -357,18 +334,13 @@ button {
 
     border-radius: 50%;
 
-    background: #5de36a;
+    background: #58dc68;
 }
 
-
-/* =========================
-   APP LAYOUT
-========================= */
-
-.app {
-    min-height: 0;
-
+.chat-layout {
     flex: 1;
+
+    min-height: 0;
 
     display: flex;
 }
@@ -379,29 +351,27 @@ button {
 ========================= */
 
 .sidebar {
-    width: 250px;
+    width: 245px;
 
     flex-shrink: 0;
 
-    display: flex;
-
-    flex-direction: column;
-
-    padding: 20px 14px;
+    padding: 20px 13px;
 
     background: #101016;
 
-    border-right: 1px solid #272730;
+    border-right: 1px solid #282731;
 }
 
-.sidebar-section h3 {
+.sidebar-title {
     margin: 5px 10px 10px;
+
+    color: #666371;
 
     font-size: 11px;
 
-    letter-spacing: 1px;
+    font-weight: 700;
 
-    color: #686674;
+    letter-spacing: 1px;
 }
 
 .room {
@@ -423,15 +393,13 @@ button {
 
     background: transparent;
 
-    color: #aaa8b5;
+    color: #9996a4;
 
     text-align: left;
-
-    transition: 0.15s;
 }
 
 .room:hover {
-    background: #191920;
+    background: #1a1921;
 
     color: #ffffff;
 }
@@ -442,17 +410,11 @@ button {
     color: #ffffff;
 }
 
-.room span {
-    width: 20px;
-
-    text-align: center;
+.online-title {
+    margin-top: 30px;
 }
 
-.online-section {
-    margin-top: 28px;
-}
-
-.online {
+.online-user {
     display: flex;
 
     align-items: center;
@@ -461,42 +423,16 @@ button {
 
     padding: 8px 10px;
 
-    color: #a5a3ae;
+    border-radius: 7px;
+
+    color: #a5a2ae;
 
     font-size: 14px;
-
-    cursor: pointer;
-
-    border-radius: 7px;
-}
-
-.online:hover {
-    background: #191920;
-
-    color: #ffffff;
-}
-
-.sidebar-bottom {
-    margin-top: auto;
-
-    padding: 15px 10px 5px;
-
-    color: #575662;
-
-    font-size: 12px;
-}
-
-.sidebar-bottom p {
-    margin: 0 0 3px;
-}
-
-.sidebar-bottom span {
-    color: #41414b;
 }
 
 
 /* =========================
-   CHAT
+   CHAT AREA
 ========================= */
 
 .chat {
@@ -510,15 +446,9 @@ button {
 }
 
 .chat-header {
-    min-height: 78px;
+    padding: 18px 25px;
 
-    display: flex;
-
-    align-items: center;
-
-    padding: 15px 25px;
-
-    border-bottom: 1px solid #24242c;
+    border-bottom: 1px solid #282731;
 }
 
 .chat-header h2 {
@@ -530,7 +460,7 @@ button {
 .chat-header p {
     margin: 0;
 
-    color: #777581;
+    color: #706e7b;
 
     font-size: 13px;
 }
@@ -545,54 +475,55 @@ button {
     padding: 25px;
 }
 
-.empty-chat {
+.welcome-message {
     height: 100%;
 
     display: flex;
+
+    flex-direction: column;
 
     align-items: center;
 
     justify-content: center;
 
-    flex-direction: column;
+    color: #6d6a78;
 
     text-align: center;
-
-    color: #696773;
 }
 
-.empty-chat > div {
+.welcome-icon {
     width: 60px;
     height: 60px;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
     margin-bottom: 12px;
 
-    border-radius: 15px;
+    border-radius: 16px;
 
     background: #17171f;
 
     font-size: 25px;
 }
 
-.empty-chat h3 {
-    margin: 5px 0;
+.welcome-message h3 {
+    margin: 5px;
 
-    color: #a8a5b2;
+    color: #a8a5b1;
 }
 
-.empty-chat p {
+.welcome-message p {
     margin: 0;
 
-    font-size: 14px;
+    font-size: 13px;
 }
 
 
 /* =========================
-   MESSAGES
+   MESSAGE
 ========================= */
 
 .message {
@@ -600,9 +531,9 @@ button {
 
     gap: 12px;
 
-    margin-bottom: 20px;
-
     max-width: 850px;
+
+    margin-bottom: 20px;
 }
 
 .avatar {
@@ -618,9 +549,7 @@ button {
 
     border-radius: 50%;
 
-    background: #292834;
-
-    color: #ffffff;
+    background: #292833;
 
     font-weight: 700;
 }
@@ -632,7 +561,7 @@ button {
 .message p {
     margin: 5px 0 0;
 
-    color: #c4c2cb;
+    color: #c0bec8;
 
     line-height: 1.5;
 
@@ -642,47 +571,35 @@ button {
 .role {
     display: inline-block;
 
-    padding: 2px 6px;
+    padding: 3px 7px;
 
     border-radius: 4px;
 
     background: #292832;
 
-    color: #aaa7b5;
+    color: #aaa7b4;
 
-    font-size: 10px;
+    font-size: 9px;
 
     font-weight: 700;
 
     text-transform: uppercase;
 }
 
-.role.owner {
-    background: #37343f;
-
-    color: #ffffff;
-}
-
 
 /* =========================
-   MESSAGE INPUT
+   INPUT
 ========================= */
 
-.message-input-container {
-    padding: 12px 25px 18px;
-}
-
-.message-input {
+.input-area {
     display: flex;
 
     gap: 9px;
 
-    max-width: 1000px;
-
-    margin: auto;
+    padding: 12px 25px 18px;
 }
 
-.message-input input {
+.input-area input {
     flex: 1;
 
     min-width: 0;
@@ -700,12 +617,12 @@ button {
     color: #ffffff;
 }
 
-.message-input input:focus {
-    border-color: #555361;
+.input-area input:focus {
+    border-color: #5b5966;
 }
 
-.message-input button {
-    padding: 0 19px;
+.send-btn {
+    padding: 0 20px;
 
     border: none;
 
@@ -718,16 +635,6 @@ button {
     font-weight: 700;
 }
 
-.input-hint {
-    max-width: 1000px;
-
-    margin: 6px auto 0;
-
-    color: #4f4e59;
-
-    font-size: 11px;
-}
-
 
 /* =========================
    MODALS
@@ -738,7 +645,7 @@ button {
 
     inset: 0;
 
-    z-index: 1000;
+    z-index: 100;
 
     display: flex;
 
@@ -747,12 +654,12 @@ button {
 
     padding: 20px;
 
-    background: rgba(0, 0, 0, 0.72);
+    background: rgba(0, 0, 0, 0.75);
 
     backdrop-filter: blur(5px);
 }
 
-.profile-card {
+.profile-box {
     position: relative;
 
     width: 100%;
@@ -767,12 +674,13 @@ button {
     background: #15151c;
 
     text-align: center;
-
-    box-shadow:
-        0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
-.close-button {
+.edit-box {
+    text-align: left;
+}
+
+.close {
     position: absolute;
 
     top: 12px;
@@ -782,22 +690,18 @@ button {
 
     background: transparent;
 
-    color: #777581;
+    color: #777481;
 
     font-size: 28px;
-
-    line-height: 1;
-
-    cursor: pointer;
 }
 
-.close-button:hover {
+.close:hover {
     color: #ffffff;
 }
 
 .profile-avatar {
-    width: 90px;
-    height: 90px;
+    width: 85px;
+    height: 85px;
 
     display: flex;
 
@@ -808,26 +712,26 @@ button {
 
     border-radius: 50%;
 
-    background: #292834;
+    background: #292833;
 
-    font-size: 35px;
+    font-size: 32px;
 
     font-weight: 700;
 }
 
-.profile-card h2 {
-    margin: 0 0 8px;
+.profile-box h2 {
+    margin: 0 0 9px;
 }
 
-.profile-bio {
+.bio {
     margin: 18px 0;
 
-    color: #aaa7b5;
+    color: #a5a2ae;
 
     line-height: 1.5;
 }
 
-.profile-status {
+.online-status {
     display: flex;
 
     align-items: center;
@@ -835,68 +739,15 @@ button {
 
     gap: 7px;
 
-    margin-bottom: 5px;
-
     color: #85828e;
 
     font-size: 13px;
 }
 
-
-/* =========================
-   EDIT PROFILE
-========================= */
-
-.edit-card {
-    text-align: left;
-}
-
-.edit-card > h2 {
-    text-align: left;
-}
-
-.edit-card > p {
-    color: #777581;
-
-    margin-bottom: 25px;
-}
-
-.edit-card label {
-    display: block;
-
-    margin: 17px 0 7px;
-
-    font-size: 13px;
-
-    color: #c2bfca;
-}
-
-.edit-card input,
-.edit-card textarea {
-    width: 100%;
-
-    padding: 12px;
-
-    border: 1px solid #33333d;
-
-    border-radius: 9px;
-
-    outline: none;
-
-    background: #0e0e13;
-
-    color: #ffffff;
-}
-
-.edit-card textarea {
+.edit-box textarea {
     min-height: 100px;
 
     resize: vertical;
-}
-
-.edit-card input:focus,
-.edit-card textarea:focus {
-    border-color: #5b5967;
 }
 
 
@@ -906,25 +757,37 @@ button {
 
 @media (max-width: 700px) {
 
-    .sidebar {
-        width: 75px;
-
-        padding: 15px 8px;
+    .landing-box h1 {
+        font-size: 52px;
     }
 
-    .sidebar-section h3,
-    .sidebar-bottom,
-    .room {
-        font-size: 0;
+    .landing-actions {
+        flex-direction: column;
+    }
+
+    .landing-actions .btn {
+        width: 100%;
+    }
+
+    .sidebar {
+        width: 70px;
+
+        padding: 15px 7px;
+    }
+
+    .sidebar-title {
+        display: none;
     }
 
     .room {
         justify-content: center;
 
         padding: 13px;
+
+        font-size: 0;
     }
 
-    .room span {
+    .room:first-letter {
         font-size: 18px;
     }
 
@@ -932,36 +795,13 @@ button {
         display: none;
     }
 
-    .chat-header {
-        padding: 15px;
+    .input-area {
+        padding: 10px 12px;
     }
 
     .messages {
         padding: 18px;
     }
 
-    .message-input-container {
-        padding: 10px 12px 15px;
-    }
-
-    .input-hint {
-        display: none;
-    }
-
-    .landing-container h1 {
-        font-size: 52px;
-    }
-
-    .landing-buttons {
-        flex-direction: column;
-    }
-
-    .landing-buttons button {
-        width: 100%;
-    }
-
-    .auth-card {
-        padding: 28px 22px;
-    }
 }
 ```
