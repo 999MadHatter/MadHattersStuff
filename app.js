@@ -1,4 +1,5 @@
 ```javascript
+alert("Afterhours JS is working!");
 // =========================
 // AFTERHOURS
 // FRONTEND PROTOTYPE
