@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,221 +6,330 @@
 
     <title>Afterhours</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
 
+    <!-- ========================= -->
     <!-- LANDING -->
+    <!-- ========================= -->
 
-    <div id="landingPage" class="page landing">
+    <main id="landingPage">
 
-        <div class="landing-box">
+        <section class="landing">
 
-            <div class="logo-big">🌙</div>
+            <div class="landing-content">
 
-            <h1>Afterhours</h1>
+                <h1>Afterhours</h1>
 
-            <p>Talk. Connect. Stay up.</p>
+                <p>
+                    Talk. Connect. Stay awhile.
+                </p>
 
-            <div class="landing-actions">
+                <div class="landing-buttons">
 
-                <button
-                    class="btn primary"
-                    onclick="showLogin()"
-                >
-                    Log In
-                </button>
+                    <button
+                        id="loginButton"
+                        type="button"
+                        class="primary-button"
+                    >
+                        Log In
+                    </button>
 
-                <button
-                    class="btn secondary"
-                    onclick="showRegister()"
-                >
-                    Create Account
-                </button>
+                    <button
+                        id="registerButton"
+                        type="button"
+                        class="secondary-button"
+                    >
+                        Create Account
+                    </button>
+
+                </div>
 
             </div>
 
-        </div>
+        </section>
 
-    </div>
+    </main>
 
 
+    <!-- ========================= -->
     <!-- LOGIN -->
+    <!-- ========================= -->
 
-    <div id="loginPage" class="page auth-page hidden">
+    <main
+        id="loginPage"
+        class="hidden"
+    >
 
-        <div class="auth-box">
+        <section class="auth-page">
 
-            <div class="small-logo">🌙</div>
+            <div class="auth-card">
 
-            <h2>Welcome back</h2>
+                <button
+                    id="backFromLogin"
+                    type="button"
+                    class="back-button"
+                >
+                    ← Back
+                </button>
 
-            <p class="muted">
-                Log in to continue to Afterhours.
-            </p>
+                <h2>Welcome back</h2>
 
-            <label>Username</label>
-
-<input
-    id="loginEmail"
-    type="email"
-    placeholder="Email"
-    autocomplete="email"
->
-            <label>Password</label>
-
-            <input
-                id="loginPassword"
-                type="password"
-                placeholder="Password"
-            >
-
-            <button
-                class="btn primary full"
-                onclick="login()"
-            >
-                Log In
-            </button>
-
-            <button
-                class="back-btn"
-                onclick="showLanding()"
-            >
-                ← Back
-            </button>
-
-        </div>
-
-    </div>
+                <p>
+                    Log in to your Afterhours account.
+                </p>
 
 
-    <!-- REGISTER -->
+                <form id="loginForm">
 
-    <div id="registerPage" class="page auth-page hidden">
+                    <label for="loginEmail">
+                        Email
+                    </label>
 
-        <div class="auth-box">
-
-            <div class="small-logo">🌙</div>
-
-            <h2>Create account</h2>
-
-            <p class="muted">
-                Join Afterhours.
-            </p>
-
-            <label>Username</label>
-
-            <input
-                id="registerUsername"
-                type="text"
-                placeholder="Choose a username"
-                maxlength="32"
-            >
-
-            <label>Email</label>
-
-            <input
-                id="registerEmail"
-                type="email"
-                placeholder="you@example.com"
-            >
-
-            <label>Password</label>
-
-            <input
-                id="registerPassword"
-                type="password"
-                placeholder="Create a password"
-            >
-
-            <button
-                class="btn primary full"
-                onclick="register()"
-            >
-                Create Account
-            </button>
-
-            <button
-                class="back-btn"
-                onclick="showLanding()"
-            >
-                ← Back
-            </button>
-
-        </div>
-
-    </div>
+                    <input
+                        id="loginEmail"
+                        type="email"
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        required
+                    >
 
 
-    <!-- CHAT -->
+                    <label for="loginPassword">
+                        Password
+                    </label>
 
-    <div id="chatPage" class="page chat-page hidden">
+                    <input
+                        id="loginPassword"
+                        type="password"
+                        placeholder="Your password"
+                        autocomplete="current-password"
+                        required
+                    >
 
-        <header class="topbar">
 
-            <div class="brand">
-                <span>🌙</span>
-                <strong>Afterhours</strong>
+                    <button
+                        id="loginSubmit"
+                        type="submit"
+                        class="primary-button full-button"
+                    >
+                        Log In
+                    </button>
+
+                </form>
+
+
+                <p class="auth-switch">
+
+                    Don't have an account?
+
+                    <button
+                        id="loginToRegister"
+                        type="button"
+                    >
+                        Create one
+                    </button>
+
+                </p>
+
             </div>
 
-            <button
-                class="user-button"
-                onclick="openProfile()"
-            >
-                <span class="status-dot"></span>
-                <span id="topUsername">MadHatter</span>
-            </button>
+        </section>
 
-        </header>
+    </main>
 
+
+    <!-- ========================= -->
+    <!-- REGISTER -->
+    <!-- ========================= -->
+
+    <main
+        id="registerPage"
+        class="hidden"
+    >
+
+        <section class="auth-page">
+
+            <div class="auth-card">
+
+                <button
+                    id="backFromRegister"
+                    type="button"
+                    class="back-button"
+                >
+                    ← Back
+                </button>
+
+                <h2>Create your account</h2>
+
+                <p>
+                    Join Afterhours.
+                </p>
+
+
+                <form id="registerForm">
+
+                    <label for="registerUsername">
+                        Username
+                    </label>
+
+                    <input
+                        id="registerUsername"
+                        type="text"
+                        placeholder="Choose a username"
+                        autocomplete="username"
+                        maxlength="24"
+                        required
+                    >
+
+
+                    <label for="registerEmail">
+                        Email
+                    </label>
+
+                    <input
+                        id="registerEmail"
+                        type="email"
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        required
+                    >
+
+
+                    <label for="registerPassword">
+                        Password
+                    </label>
+
+                    <input
+                        id="registerPassword"
+                        type="password"
+                        placeholder="At least 8 characters"
+                        autocomplete="new-password"
+                        minlength="8"
+                        required
+                    >
+
+
+                    <button
+                        id="registerSubmit"
+                        type="submit"
+                        class="primary-button full-button"
+                    >
+                        Create Account
+                    </button>
+
+                </form>
+
+
+                <p class="auth-switch">
+
+                    Already have an account?
+
+                    <button
+                        id="registerToLogin"
+                        type="button"
+                    >
+                        Log in
+                    </button>
+
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ========================= -->
+    <!-- CHAT -->
+    <!-- ========================= -->
+
+    <main
+        id="chatPage"
+        class="hidden"
+    >
 
         <div class="chat-layout">
 
-            <!-- SIDEBAR -->
-
             <aside class="sidebar">
 
-                <div class="sidebar-title">
-                    ROOMS
+                <div class="sidebar-header">
+
+                    <h2>Afterhours</h2>
+
                 </div>
 
-                <button
-                    class="room active"
-                    onclick="changeRoom('general', this)"
-                >
-                    💬 General
-                </button>
 
-                <button
-                    class="room"
-                    onclick="changeRoom('gaming', this)"
-                >
-                    🎮 Gaming
-                </button>
+                <div class="rooms">
 
-                <button
-                    class="room"
-                    onclick="changeRoom('music', this)"
-                >
-                    🎵 Music
-                </button>
+                    <button
+                        type="button"
+                        class="room active"
+                        data-room="general"
+                    >
+                        💬 General
+                    </button>
 
+                    <button
+                        type="button"
+                        class="room"
+                        data-room="gaming"
+                    >
+                        🎮 Gaming
+                    </button>
 
-                <div class="sidebar-title online-title">
-                    ONLINE
+                    <button
+                        type="button"
+                        class="room"
+                        data-room="music"
+                    >
+                        🎵 Music
+                    </button>
+
                 </div>
 
-                <div id="onlineUsers"></div>
+
+                <div class="sidebar-bottom">
+
+                    <button
+                        id="profileButton"
+                        type="button"
+                        class="profile-button"
+                    >
+
+                        <span
+                            id="sidebarAvatar"
+                            class="avatar"
+                        >
+                            ?
+                        </span>
+
+                        <span id="topUsername">
+                            User
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        id="logoutButton"
+                        type="button"
+                        class="secondary-button"
+                    >
+                        Log Out
+                    </button>
+
+                </div>
 
             </aside>
 
 
-            <!-- CHAT -->
+            <section class="chat-area">
 
-            <main class="chat">
-
-                <div class="chat-header">
+                <header class="chat-header">
 
                     <h2 id="roomTitle">
                         💬 General
@@ -231,7 +339,7 @@
                         Talk. Connect. Chill.
                     </p>
 
-                </div>
+                </header>
 
 
                 <div
@@ -258,82 +366,83 @@
                 </div>
 
 
-                <div class="input-area">
+                <form
+                    id="messageForm"
+                    class="message-form"
+                >
 
                     <input
                         id="messageInput"
                         type="text"
                         placeholder="Message General..."
-                        maxlength="2000"
-                        onkeydown="handleEnter(event)"
+                        autocomplete="off"
                     >
 
                     <button
-                        class="send-btn"
-                        onclick="sendMessage()"
+                        type="submit"
+                        class="primary-button"
                     >
                         Send
                     </button>
 
-                </div>
+                </form>
 
-            </main>
+            </section>
+
+
+            <aside class="members-sidebar">
+
+                <h3>
+                    Online
+                </h3>
+
+                <div id="onlineUsers"></div>
+
+            </aside>
 
         </div>
 
-    </div>
+    </main>
 
 
-    <!-- PROFILE -->
+    <!-- ========================= -->
+    <!-- PROFILE MODAL -->
+    <!-- ========================= -->
 
     <div
         id="profileModal"
         class="modal hidden"
-        onclick="closeProfileOutside(event)"
     >
 
-        <div
-            class="profile-box"
-            onclick="event.stopPropagation()"
-        >
+        <div class="modal-card">
 
             <button
-                class="close"
-                onclick="closeProfile()"
+                id="closeProfileButton"
+                type="button"
+                class="close-button"
             >
                 ×
             </button>
 
             <div
                 id="profileAvatar"
-                class="profile-avatar"
+                class="large-avatar"
             >
-                M
+                ?
             </div>
 
             <h2 id="profileName">
-                MadHatter
+                User
             </h2>
 
-            <span class="role">
-                Owner
-            </span>
-
-            <p
-                id="profileBio"
-                class="bio"
-            >
-                Building Afterhours 🔥
+            <p id="profileBio">
+                No bio yet.
             </p>
 
-            <div class="online-status">
-                <span class="status-dot"></span>
-                Online
-            </div>
-
             <button
-                class="btn primary full"
-                onclick="openEditProfile()"
+                id="editProfileButton"
+                type="button"
+                class="primary-button full-button"
             >
                 Edit Profile
             </button>
@@ -343,47 +452,55 @@
     </div>
 
 
+    <!-- ========================= -->
     <!-- EDIT PROFILE -->
+    <!-- ========================= -->
 
     <div
         id="editProfileModal"
         class="modal hidden"
-        onclick="closeEditOutside(event)"
     >
 
-        <div
-            class="profile-box edit-box"
-            onclick="event.stopPropagation()"
-        >
+        <div class="modal-card">
 
             <button
-                class="close"
-                onclick="closeEditProfile()"
+                id="closeEditProfileButton"
+                type="button"
+                class="close-button"
             >
                 ×
             </button>
 
-            <h2>Edit Profile</h2>
+            <h2>
+                Edit Profile
+            </h2>
 
-            <label>Display Name</label>
+
+            <label for="editName">
+                Display Name
+            </label>
 
             <input
                 id="editName"
                 type="text"
-                maxlength="32"
+                maxlength="40"
             >
 
-            <label>Bio</label>
+
+            <label for="editBio">
+                Bio
+            </label>
 
             <textarea
                 id="editBio"
-                maxlength="160"
-                placeholder="Tell people about yourself..."
+                maxlength="200"
             ></textarea>
 
+
             <button
-                class="btn primary full"
-                onclick="saveProfile()"
+                id="saveProfileButton"
+                type="button"
+                class="primary-button full-button"
             >
                 Save Changes
             </button>
@@ -393,9 +510,13 @@
     </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./app.js"></script>
+    <!-- SUPABASE MUST LOAD FIRST -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- YOUR JAVASCRIPT -->
+
+    <script src="./app.js"></script>
 
 </body>
 </html>
-```
