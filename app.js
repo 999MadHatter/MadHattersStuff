@@ -1,4 +1,5 @@
 ```javascript
+alert("Afterhours app.js is loading!");
 const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
 
 const SUPABASE_KEY = "sb_publishable_kb_dDY7fXA0yTkyQyoBwYw_1lkqf6GF";
