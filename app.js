@@ -1,121 +1,11 @@
 ```javascript
 // =========================
-// PAGE ELEMENTS
+// AFTERHOURS
 // =========================
-
-const landingPage = document.getElementById("landingPage");
-const loginPage = document.getElementById("loginPage");
-const signupPage = document.getElementById("signupPage");
-const chatPage = document.getElementById("chatPage");
 
 
 // =========================
-// LANDING BUTTONS
-// =========================
-
-const loginButton = document.getElementById("loginButton");
-const signupButton = document.getElementById("signupButton");
-
-
-// =========================
-// BACK BUTTONS
-// =========================
-
-const backFromLogin = document.getElementById("backFromLogin");
-const backFromSignup = document.getElementById("backFromSignup");
-
-
-// =========================
-// LOGIN
-// =========================
-
-const enterChatButton =
-    document.getElementById("enterChatButton");
-
-const loginUsername =
-    document.getElementById("loginUsername");
-
-const loginPassword =
-    document.getElementById("loginPassword");
-
-
-// =========================
-// REGISTER
-// =========================
-
-const createAccountButton =
-    document.getElementById("createAccountButton");
-
-const signupUsername =
-    document.getElementById("signupUsername");
-
-const signupEmail =
-    document.getElementById("signupEmail");
-
-const signupPassword =
-    document.getElementById("signupPassword");
-
-
-// =========================
-// CHAT
-// =========================
-
-const topUsername =
-    document.getElementById("topUsername");
-
-const messageInput =
-    document.getElementById("messageInput");
-
-const sendButton =
-    document.getElementById("sendButton");
-
-const messages =
-    document.getElementById("messages");
-
-
-// =========================
-// PROFILE
-// =========================
-
-const profileButton =
-    document.getElementById("profileButton");
-
-const profileModal =
-    document.getElementById("profileModal");
-
-const closeProfile =
-    document.getElementById("closeProfile");
-
-const editProfileButton =
-    document.getElementById("editProfileButton");
-
-const editProfileModal =
-    document.getElementById("editProfileModal");
-
-const closeEditProfile =
-    document.getElementById("closeEditProfile");
-
-const saveProfileButton =
-    document.getElementById("saveProfileButton");
-
-const profileName =
-    document.getElementById("profileName");
-
-const profileAvatar =
-    document.getElementById("profileAvatar");
-
-const profileBio =
-    document.getElementById("profileBio");
-
-const editDisplayName =
-    document.getElementById("editDisplayName");
-
-const editBio =
-    document.getElementById("editBio");
-
-
-// =========================
-// CURRENT USER
+// USER
 // =========================
 
 let currentUser = {
@@ -127,142 +17,148 @@ let currentUser = {
 
 
 // =========================
-// PAGE SWITCHER
+// HELPERS
 // =========================
 
-function showPage(page) {
-
-    landingPage.classList.add("hidden");
-    loginPage.classList.add("hidden");
-    signupPage.classList.add("hidden");
-    chatPage.classList.add("hidden");
-
-    page.classList.remove("hidden");
+function get(id) {
+    return document.getElementById(id);
 }
 
 
 // =========================
-// LOGIN PAGE
+// PAGE SWITCHING
 // =========================
 
-loginButton.addEventListener("click", function () {
+function hideAllPages() {
 
-    showPage(loginPage);
+    get("landingPage").classList.add("hidden");
+    get("loginPage").classList.add("hidden");
+    get("registerPage").classList.add("hidden");
+    get("chatPage").classList.add("hidden");
 
-    loginUsername.focus();
-
-});
-
-
-// =========================
-// REGISTER PAGE
-// =========================
-
-signupButton.addEventListener("click", function () {
-
-    showPage(signupPage);
-
-    signupUsername.focus();
-
-});
+}
 
 
-// =========================
-// BACK TO LANDING
-// =========================
+function showLanding() {
 
-backFromLogin.addEventListener("click", function () {
+    hideAllPages();
 
-    showPage(landingPage);
+    get("landingPage").classList.remove("hidden");
 
-});
+}
 
 
-backFromSignup.addEventListener("click", function () {
+function showLogin() {
 
-    showPage(landingPage);
+    hideAllPages();
 
-});
+    get("loginPage").classList.remove("hidden");
+
+    setTimeout(() => {
+        get("loginUsername").focus();
+    }, 50);
+
+}
+
+
+function showRegister() {
+
+    hideAllPages();
+
+    get("registerPage").classList.remove("hidden");
+
+    setTimeout(() => {
+        get("registerUsername").focus();
+    }, 50);
+
+}
 
 
 // =========================
 // LOGIN
 // =========================
 
-enterChatButton.addEventListener("click", function () {
+function login() {
 
     const username =
-        loginUsername.value.trim();
+        get("loginUsername").value.trim();
 
     const password =
-        loginPassword.value;
+        get("loginPassword").value;
 
 
-    if (username === "") {
+    if (!username) {
 
-        alert("Enter your username.");
+        alert("Please enter your username.");
 
         return;
     }
 
 
-    if (password === "") {
+    if (!password) {
 
-        alert("Enter your password.");
+        alert("Please enter your password.");
 
         return;
     }
 
 
     currentUser.username = username;
+
     currentUser.displayName = username;
 
 
-    updateProfile();
+    updateUser();
 
 
-    showPage(chatPage);
+    showChat();
 
-    messageInput.focus();
-
-});
+}
 
 
 // =========================
 // REGISTER
 // =========================
 
-createAccountButton.addEventListener("click", function () {
+function register() {
 
     const username =
-        signupUsername.value.trim();
+        get("registerUsername").value.trim();
 
     const email =
-        signupEmail.value.trim();
+        get("registerEmail").value.trim();
 
     const password =
-        signupPassword.value;
+        get("registerPassword").value;
 
 
-    if (username === "") {
+    if (!username) {
 
-        alert("Choose a username.");
-
-        return;
-    }
-
-
-    if (email === "") {
-
-        alert("Enter your email.");
+        alert("Please choose a username.");
 
         return;
     }
 
 
-    if (password === "") {
+    if (!email) {
 
-        alert("Choose a password.");
+        alert("Please enter your email.");
+
+        return;
+    }
+
+
+    if (!email.includes("@")) {
+
+        alert("Please enter a valid email.");
+
+        return;
+    }
+
+
+    if (!password) {
+
+        alert("Please choose a password.");
 
         return;
     }
@@ -279,110 +175,185 @@ createAccountButton.addEventListener("click", function () {
 
 
     currentUser.username = username;
+
     currentUser.displayName = username;
 
 
-    updateProfile();
+    updateUser();
 
 
-    showPage(chatPage);
+    showChat();
 
-    messageInput.focus();
-
-});
+}
 
 
 // =========================
-// PROFILE UPDATE
+// SHOW CHAT
 // =========================
 
-function updateProfile() {
+function showChat() {
 
-    topUsername.textContent =
+    hideAllPages();
+
+    get("chatPage").classList.remove("hidden");
+
+    updateOnlineUsers();
+
+    get("messageInput").focus();
+
+}
+
+
+// =========================
+// UPDATE USER
+// =========================
+
+function updateUser() {
+
+    get("topUsername").textContent =
         currentUser.displayName;
 
-    profileName.textContent =
+    get("profileName").textContent =
         currentUser.displayName;
 
-    profileAvatar.textContent =
+    get("profileAvatar").textContent =
         currentUser.displayName
             .charAt(0)
             .toUpperCase();
 
-    profileBio.textContent =
+    get("profileBio").textContent =
         currentUser.bio;
 
 }
 
 
 // =========================
-// OPEN PROFILE
+// ONLINE USER
 // =========================
 
-profileButton.addEventListener("click", function () {
+function updateOnlineUsers() {
 
-    updateProfile();
+    const container =
+        get("onlineUsers");
 
-    profileModal.classList.remove("hidden");
+    container.innerHTML = "";
 
-});
+
+    const user = document.createElement("div");
+
+    user.className = "online-user";
+
+
+    const dot = document.createElement("span");
+
+    dot.className = "status-dot";
+
+
+    const name = document.createElement("span");
+
+    name.textContent =
+        currentUser.displayName;
+
+
+    user.appendChild(dot);
+
+    user.appendChild(name);
+
+
+    container.appendChild(user);
+
+}
 
 
 // =========================
-// CLOSE PROFILE
+// PROFILE
 // =========================
 
-closeProfile.addEventListener("click", function () {
+function openProfile() {
 
-    profileModal.classList.add("hidden");
+    updateUser();
 
-});
+    get("profileModal")
+        .classList.remove("hidden");
+
+}
+
+
+function closeProfile() {
+
+    get("profileModal")
+        .classList.add("hidden");
+
+}
+
+
+function closeProfileOutside(event) {
+
+    if (
+        event.target === get("profileModal")
+    ) {
+
+        closeProfile();
+
+    }
+
+}
 
 
 // =========================
 // EDIT PROFILE
 // =========================
 
-editProfileButton.addEventListener("click", function () {
+function openEditProfile() {
 
-    editDisplayName.value =
+    get("editName").value =
         currentUser.displayName;
 
-    editBio.value =
+    get("editBio").value =
         currentUser.bio;
 
-    profileModal.classList.add("hidden");
 
-    editProfileModal.classList.remove("hidden");
-
-});
+    closeProfile();
 
 
-// =========================
-// CLOSE EDIT PROFILE
-// =========================
+    get("editProfileModal")
+        .classList.remove("hidden");
 
-closeEditProfile.addEventListener("click", function () {
-
-    editProfileModal.classList.add("hidden");
-
-});
+}
 
 
-// =========================
-// SAVE PROFILE
-// =========================
+function closeEditProfile() {
 
-saveProfileButton.addEventListener("click", function () {
+    get("editProfileModal")
+        .classList.add("hidden");
 
-    const newName =
-        editDisplayName.value.trim();
-
-    const newBio =
-        editBio.value.trim();
+}
 
 
-    if (newName === "") {
+function closeEditOutside(event) {
+
+    if (
+        event.target ===
+        get("editProfileModal")
+    ) {
+
+        closeEditProfile();
+
+    }
+
+}
+
+
+function saveProfile() {
+
+    const name =
+        get("editName").value.trim();
+
+    const bio =
+        get("editBio").value.trim();
+
+
+    if (!name) {
 
         alert("Display name cannot be empty.");
 
@@ -390,19 +361,19 @@ saveProfileButton.addEventListener("click", function () {
     }
 
 
-    currentUser.displayName =
-        newName;
+    currentUser.displayName = name;
 
     currentUser.bio =
-        newBio || "No bio yet.";
+        bio || "No bio yet.";
 
 
-    updateProfile();
+    updateUser();
 
+    updateOnlineUsers();
 
-    editProfileModal.classList.add("hidden");
+    closeEditProfile();
 
-});
+}
 
 
 // =========================
@@ -411,21 +382,30 @@ saveProfileButton.addEventListener("click", function () {
 
 function sendMessage() {
 
+    const input =
+        get("messageInput");
+
     const text =
-        messageInput.value.trim();
+        input.value.trim();
 
 
-    if (text === "") {
+    if (!text) {
         return;
     }
 
 
-    const emptyChat =
-        messages.querySelector(".empty-chat");
+    const messages =
+        get("messages");
 
 
-    if (emptyChat) {
-        emptyChat.remove();
+    const welcome =
+        messages.querySelector(
+            ".welcome-message"
+        );
+
+
+    if (welcome) {
+        welcome.remove();
     }
 
 
@@ -474,65 +454,52 @@ function sendMessage() {
 
 
     content.appendChild(username);
+
     content.appendChild(role);
+
     content.appendChild(textElement);
 
+
     message.appendChild(avatar);
+
     message.appendChild(content);
+
 
     messages.appendChild(message);
 
 
-    messageInput.value = "";
+    input.value = "";
 
     messages.scrollTop =
         messages.scrollHeight;
 
+    input.focus();
+
 }
-
-
-// =========================
-// SEND BUTTON
-// =========================
-
-sendButton.addEventListener("click", sendMessage);
 
 
 // =========================
 // ENTER TO SEND
 // =========================
 
-messageInput.addEventListener(
-    "keydown",
-    function (event) {
+function handleEnter(event) {
 
-        if (event.key === "Enter") {
+    if (event.key === "Enter") {
 
-            event.preventDefault();
+        event.preventDefault();
 
-            sendMessage();
-
-        }
+        sendMessage();
 
     }
-);
+
+}
 
 
 // =========================
-// CHAT ROOMS
+// ROOMS
 // =========================
 
-const rooms =
-    document.querySelectorAll(".room");
-
-const chatTitle =
-    document.getElementById("chatTitle");
-
-const chatDescription =
-    document.getElementById("chatDescription");
-
-
-const roomInfo = {
+const rooms = {
 
     general: {
         title: "💬 General",
@@ -552,95 +519,92 @@ const roomInfo = {
 };
 
 
-rooms.forEach(function (room) {
+function changeRoom(roomName, button) {
 
-    room.addEventListener("click", function () {
+    const room =
+        rooms[roomName];
 
-        rooms.forEach(function (r) {
 
-            r.classList.remove("active");
+    if (!room) {
+        return;
+    }
+
+
+    document
+        .querySelectorAll(".room")
+        .forEach(function (item) {
+
+            item.classList.remove("active");
 
         });
 
 
-        room.classList.add("active");
+    button.classList.add("active");
 
 
-        const roomID =
-            room.dataset.room;
+    get("roomTitle").textContent =
+        room.title;
+
+    get("roomDescription").textContent =
+        room.description;
+
+    get("messageInput").placeholder =
+        "Message " +
+        room.title.substring(2) +
+        "...";
 
 
-        const info =
-            roomInfo[roomID];
+    get("messages").innerHTML = "";
 
 
-        if (!info) {
-            return;
-        }
+    const welcome =
+        document.createElement("div");
+
+    welcome.className =
+        "welcome-message";
 
 
-        chatTitle.textContent =
-            info.title;
+    const icon =
+        document.createElement("div");
 
-        chatDescription.textContent =
-            info.description;
+    icon.className =
+        "welcome-icon";
 
-
-        messageInput.placeholder =
-            "Message " + info.title + "...";
-
-
-        messages.innerHTML = "";
+    icon.textContent =
+        room.title.substring(0, 2);
 
 
-        const emptyChat =
-            document.createElement("div");
+    const title =
+        document.createElement("h3");
 
-        emptyChat.className =
-            "empty-chat";
-
-
-        const icon =
-            document.createElement("div");
-
-        icon.textContent =
-            roomID === "general"
-                ? "💬"
-                : roomID === "gaming"
-                    ? "🎮"
-                    : "🎵";
+    title.textContent =
+        "Welcome to " +
+        room.title.substring(2);
 
 
-        const title =
-            document.createElement("h3");
+    const description =
+        document.createElement("p");
 
-        title.textContent =
-            "Welcome to " +
-            info.title.substring(2);
-
-
-        const description =
-            document.createElement("p");
-
-        description.textContent =
-            "Be the first person to send a message.";
+    description.textContent =
+        "Send the first message.";
 
 
-        emptyChat.appendChild(icon);
-        emptyChat.appendChild(title);
-        emptyChat.appendChild(description);
+    welcome.appendChild(icon);
+
+    welcome.appendChild(title);
+
+    welcome.appendChild(description);
 
 
-        messages.appendChild(emptyChat);
+    get("messages")
+        .appendChild(welcome);
 
-    });
-
-});
+}
 
 
 // =========================
 // START
 // =========================
 
-showPage(landingPage);
+showLanding();
 ```
