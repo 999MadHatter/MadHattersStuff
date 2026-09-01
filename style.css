@@ -1,19 +1,35 @@
 /* ============================================================
-   FINAL VISUAL FIXES
+   AFTERHOURS - FINAL UI FIXES
 ============================================================ */
 
-/* Make the profile modal actually readable */
+/* ---------- SIDEBAR ---------- */
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+}
+
+/* ---------- PROFILE POPUP ---------- */
+
 .modal-card {
     position: relative;
     width: min(420px, calc(100vw - 32px));
     padding: 32px;
-    border: 1px solid #343342;
     border-radius: 20px;
+
     background: #171720;
+    border: 1px solid #343342;
+
     color: #ffffff;
+
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.65);
 }
 
+/* Profile title */
 .modal-card h2 {
     margin: 0 0 10px;
     color: #ffffff;
@@ -21,69 +37,13 @@
     font-weight: 700;
 }
 
+/* Profile text */
 .modal-card p {
-    color: #b8b5c4;
+    color: #b9b6c5;
+    line-height: 1.6;
 }
 
-.modal-card label {
-    display: block;
-    margin: 18px 0 8px;
-    color: #c8c5d2;
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.modal-card input,
-.modal-card textarea {
-    width: 100%;
-    padding: 13px 14px;
-    border: 1px solid #373641;
-    border-radius: 10px;
-    outline: none;
-    background: #0f0f15;
-    color: #ffffff;
-    font-size: 14px;
-}
-
-.modal-card input::placeholder,
-.modal-card textarea::placeholder {
-    color: #6f6c7a;
-}
-
-.modal-card input:focus,
-.modal-card textarea:focus {
-    border-color: #77738a;
-}
-
-/* Close button */
-.close-button {
-    position: absolute;
-    top: 12px;
-    right: 14px;
-
-    width: 36px;
-    height: 36px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border: none;
-    border-radius: 9px;
-
-    background: transparent;
-    color: #aaa7b5;
-
-    font-size: 25px;
-    line-height: 1;
-}
-
-.close-button:hover {
-    background: #24232e;
-    color: #ffffff;
-}
-
-/* Better profile avatar */
+/* Profile avatar */
 .large-avatar {
     width: 92px;
     height: 92px;
@@ -106,9 +66,10 @@
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
 }
 
-/* Profile name + bio */
+/* Center the profile information */
 #profileName {
     text-align: center;
+    color: #ffffff;
     margin-bottom: 8px;
 }
 
@@ -117,51 +78,127 @@
     margin: 0 auto 24px;
 
     color: #aaa7b5;
-    line-height: 1.6;
     text-align: center;
+    line-height: 1.6;
 }
 
-/* Make buttons in the profile look cleaner */
-.modal-card .primary-button {
-    width: 100%;
-    margin-top: 6px;
+/* Close X */
+.close-button {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+
+    width: 36px;
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 9px;
+
+    background: transparent;
+    color: #aaa7b5;
+
+    font-size: 25px;
 }
+
+.close-button:hover {
+    background: #24232e;
+    color: #ffffff;
+}
+
+/* Profile button */
+.profile-button {
+    color: #ffffff;
+}
+
+.profile-button:hover {
+    background: #1b1a22;
+}
+
+
+/* ---------- EDIT PROFILE ---------- */
+
+.modal-card label {
+    display: block;
+    margin: 18px 0 8px;
+
+    color: #c8c5d2;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.modal-card input,
+.modal-card textarea {
+    width: 100%;
+
+    padding: 13px 14px;
+
+    border: 1px solid #373641;
+    border-radius: 10px;
+
+    outline: none;
+
+    background: #0f0f15;
+    color: #ffffff;
+
+    font-size: 14px;
+}
+
+.modal-card input:focus,
+.modal-card textarea:focus {
+    border-color: #77738a;
+}
+
+.modal-card input::placeholder,
+.modal-card textarea::placeholder {
+    color: #6f6c7a;
+}
+
 
 /* ============================================================
-   MORE SPACE IN CHAT HEADER
+   CHAT HEADER - MORE SPACING
 ============================================================ */
 
 .chat-header {
-    padding: 22px 28px 24px;
+    padding: 23px 28px 25px;
 }
 
 .chat-header h2 {
-    margin: 0 0 8px;
+    margin: 0 0 10px;
+
+    color: #ffffff;
+
     font-size: 19px;
     line-height: 1.3;
 }
 
 .chat-header p {
     margin: 0;
+
     color: #858290;
+
     font-size: 13px;
     line-height: 1.5;
 }
 
-/* Give the chat area a little more breathing room */
+
+/* ============================================================
+   MESSAGE AREA / CHAT BAR
+============================================================ */
+
 .messages {
     padding: 28px;
 }
 
-.message {
-    margin-bottom: 24px;
-}
-
-/* Make the message bar feel wider and cleaner */
 .message-form {
     display: flex;
     gap: 10px;
+
     width: 100%;
+
     padding: 14px 28px 22px;
 }
 
@@ -193,17 +230,4 @@
 .message-form .primary-button {
     flex-shrink: 0;
     padding: 0 22px;
-}
-
-/* Keep the profile area readable at the bottom */
-.sidebar-bottom {
-    margin-top: auto;
-}
-
-.profile-button {
-    color: #ffffff;
-}
-
-.profile-button:hover {
-    background: #1b1a22;
 }
