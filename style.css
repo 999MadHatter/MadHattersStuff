@@ -1,9 +1,7 @@
-```css
 /* ============================================================
    AFTERHOURS
    Clean dark UI / high contrast / comfortable spacing
 ============================================================ */
-
 * {
     box-sizing: border-box;
 }
@@ -18,7 +16,7 @@ body {
 body {
     font-family: Arial, Helvetica, sans-serif;
     background: #09090d;
-    color: #f5f5f7;
+    color: #f0f0f3;
 }
 
 button,
@@ -35,11 +33,9 @@ button {
     display: none !important;
 }
 
-
 /* ============================================================
    BUTTONS
 ============================================================ */
-
 .primary-button,
 .secondary-button {
     min-height: 44px;
@@ -72,38 +68,33 @@ button {
 }
 
 .secondary-button {
-    border: 1px solid #3b3b48;
-    background: #1a1a22;
-    color: #f5f5f7;
+    border: 1px solid #3f3f4d;
+    background: #1c1c26;
+    color: #f0f0f3;
 }
 
 .secondary-button:hover {
-    background: #25252f;
-    border-color: #525261;
+    background: #282833;
+    border-color: #5a5a6b;
 }
 
 .full-button {
     width: 100%;
 }
 
-
 /* ============================================================
    LANDING PAGE
 ============================================================ */
-
 #landingPage {
     min-height: 100vh;
 }
 
 .landing {
     min-height: 100vh;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     padding: 32px;
-
     background:
         radial-gradient(
             circle at 50% 0%,
@@ -121,9 +112,7 @@ button {
 
 .landing-content h1 {
     margin: 0;
-
     color: #ffffff;
-
     font-size: clamp(52px, 9vw, 82px);
     font-weight: 800;
     letter-spacing: -4px;
@@ -132,9 +121,7 @@ button {
 
 .landing-content p {
     margin: 18px 0 34px;
-
-    color: #b5b2bf;
-
+    color: #c4c1cf;
     font-size: 18px;
     line-height: 1.6;
 }
@@ -150,20 +137,15 @@ button {
     min-width: 145px;
 }
 
-
 /* ============================================================
    AUTH PAGES
 ============================================================ */
-
 .auth-page {
     min-height: 100vh;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     padding: 24px;
-
     background:
         radial-gradient(
             circle at top,
@@ -174,31 +156,20 @@ button {
 
 .auth-card {
     position: relative;
-
     width: min(430px, 100%);
-
     padding: 34px;
-
-    border: 1px solid #353541;
+    border: 1px solid #3a3a48;
     border-radius: 20px;
-
     background: #15151d;
-
-    box-shadow:
-        0 25px 80px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.55);
 }
 
 .back-button {
     margin: 0 0 28px;
-
     padding: 0;
-
     border: none;
-
     background: transparent;
-
-    color: #aaa7b5;
-
+    color: #b8b5c4;
     font-size: 13px;
 }
 
@@ -208,18 +179,14 @@ button {
 
 .auth-card h2 {
     margin: 0 0 8px;
-
     color: #ffffff;
-
     font-size: 28px;
     line-height: 1.2;
 }
 
 .auth-card > p {
     margin: 0 0 28px;
-
-    color: #aaa7b5;
-
+    color: #b8b5c4;
     line-height: 1.5;
 }
 
@@ -230,9 +197,7 @@ button {
 
 .auth-card label {
     margin: 17px 0 8px;
-
-    color: #ddd9e5;
-
+    color: #e4e1ec;
     font-size: 13px;
     font-weight: 700;
 }
@@ -240,26 +205,21 @@ button {
 .auth-card input {
     width: 100%;
     min-height: 46px;
-
     padding: 0 14px;
-
-    border: 1px solid #3a3946;
+    border: 1px solid #42414f;
     border-radius: 10px;
-
     outline: none;
-
     background: #0e0e14;
     color: #ffffff;
-
     font-size: 14px;
 }
 
 .auth-card input::placeholder {
-    color: #777482;
+    color: #8a8798;
 }
 
 .auth-card input:focus {
-    border-color: #77748a;
+    border-color: #7a7790;
     background: #111118;
 }
 
@@ -269,23 +229,16 @@ button {
 
 .auth-switch {
     margin: 22px 0 0 !important;
-
-    color: #aaa7b5 !important;
-
+    color: #b8b5c4 !important;
     text-align: center;
 }
 
 .auth-switch button {
     margin-left: 4px;
-
     padding: 0;
-
     border: none;
-
     background: transparent;
-
     color: #ffffff;
-
     font-weight: 700;
 }
 
@@ -293,11 +246,9 @@ button {
     text-decoration: underline;
 }
 
-
 /* ============================================================
    CHAT PAGE
 ============================================================ */
-
 #chatPage {
     width: 100%;
     height: 100vh;
@@ -307,31 +258,22 @@ button {
 .chat-layout {
     width: 100%;
     height: 100vh;
-
     display: flex;
-
     overflow: hidden;
-
     background: #0b0b10;
 }
-
 
 /* ============================================================
    LEFT SIDEBAR
 ============================================================ */
-
 .sidebar {
     width: 235px;
     flex: 0 0 235px;
-
     display: flex;
     flex-direction: column;
-
     padding: 22px 13px;
-
     background: #101016;
-
-    border-right: 1px solid #292933;
+    border-right: 1px solid #2e2e3a;
 }
 
 .sidebar-header {
@@ -340,9 +282,7 @@ button {
 
 .sidebar-header h2 {
     margin: 0;
-
     color: #ffffff;
-
     font-size: 20px;
     letter-spacing: -0.4px;
 }
@@ -353,24 +293,17 @@ button {
 
 .room {
     width: 100%;
-
     display: flex;
     align-items: center;
-
     margin-bottom: 5px;
     padding: 12px 13px;
-
     border: 1px solid transparent;
     border-radius: 9px;
-
     background: transparent;
-
-    color: #aaa8b6;
-
+    color: #c8c5d4;          /* was too dark */
     text-align: left;
     font-size: 14px;
     font-weight: 600;
-
     transition:
         background 0.15s ease,
         color 0.15s ease,
@@ -378,63 +311,48 @@ button {
 }
 
 .room:hover {
-    background: #1a1a23;
+    background: #1c1c26;
     color: #ffffff;
 }
 
 .room.active {
-    background: #25242f;
-    border-color: #343340;
+    background: #272633;
+    border-color: #3d3c4a;
     color: #ffffff;
 }
 
-
 /* Bottom-left user controls */
-
 .sidebar-bottom {
     margin-top: auto;
-
     padding-top: 18px;
-
-    border-top: 1px solid #292933;
+    border-top: 1px solid #2e2e3a;
 }
 
 .profile-button {
     width: 100%;
-
     display: flex;
     align-items: center;
-
     gap: 10px;
-
     margin-bottom: 9px;
     padding: 9px;
-
     border: 1px solid transparent;
     border-radius: 10px;
-
     background: transparent;
-
     color: #ffffff;
-
     text-align: left;
 }
 
 .profile-button:hover {
-    background: #1b1b24;
-    border-color: #30303a;
+    background: #1c1c26;
+    border-color: #353545;
 }
 
 .profile-button span:last-child {
     min-width: 0;
-
     overflow: hidden;
-
-    color: #f5f5f7;
-
+    color: #f0f0f3;
     font-size: 14px;
     font-weight: 700;
-
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -443,27 +361,20 @@ button {
     width: 100%;
 }
 
-
 /* ============================================================
    AVATARS
 ============================================================ */
-
 .avatar {
     width: 38px;
     height: 38px;
     flex: 0 0 38px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
-    border: 1px solid #434252;
+    border: 1px solid #4a4958;
     border-radius: 50%;
-
-    background: #2a2935;
-
+    background: #2d2c39;
     color: #ffffff;
-
     font-size: 14px;
     font-weight: 800;
 }
@@ -474,72 +385,54 @@ button {
     flex-basis: 36px;
 }
 
-
 /* ============================================================
    CENTER CHAT
 ============================================================ */
-
 .chat-area {
     min-width: 0;
     min-height: 0;
-
     flex: 1;
-
     display: flex;
     flex-direction: column;
-
     background: #0c0c11;
 }
 
-
 /* Chat header */
-
 .chat-header {
     flex: 0 0 auto;
-
     padding: 24px 30px 22px;
-
-    border-bottom: 1px solid #292933;
-
+    border-bottom: 1px solid #2e2e3a;
     background: #101016;
 }
 
 .chat-header h2 {
-    margin: 0 0 9px;
-
+    margin: 0 0 6px;
     color: #ffffff;
-
     font-size: 20px;
     font-weight: 800;
     line-height: 1.3;
 }
 
+/* This was the super-faded “Talk. Connect. Chill.” text */
 .chat-header p {
     margin: 0;
-
-    color: #9b98a7;
-
+    color: #b0adc0;          /* raised significantly */
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.5;
 }
-
 
 /* ============================================================
    MESSAGE AREA
    ONLY THIS AREA SCROLLS
 ============================================================ */
-
 .messages {
     flex: 1;
     min-height: 0;
-
     overflow-y: auto;
     overflow-x: hidden;
-
     padding: 30px;
-
     scrollbar-width: thin;
-    scrollbar-color: #42414d transparent;
+    scrollbar-color: #4a4958 transparent;
 }
 
 .messages::-webkit-scrollbar {
@@ -552,77 +445,58 @@ button {
 
 .messages::-webkit-scrollbar-thumb {
     border-radius: 20px;
-    background: #3b3a46;
+    background: #3f3e4c;
 }
 
 .messages::-webkit-scrollbar-thumb:hover {
-    background: #504e5d;
+    background: #555364;
 }
 
-
 /* Empty/welcome state */
-
 .welcome-message {
     min-height: 100%;
-
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-
     padding: 60px 20px;
-
     text-align: center;
 }
 
 .welcome-icon {
     width: 64px;
     height: 64px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     margin-bottom: 18px;
-
-    border: 1px solid #343441;
+    border: 1px solid #3a3948;
     border-radius: 18px;
-
-    background: #171720;
-
+    background: #1a1a24;
     font-size: 27px;
 }
 
 .welcome-message h3 {
-    margin: 0 0 9px;
-
-    color: #e9e7ee;
-
+    margin: 0 0 8px;
+    color: #f0eef5;
     font-size: 18px;
 }
 
 .welcome-message p {
     margin: 0;
-
-    color: #898694;
-
-    font-size: 13px;
+    color: #9e9baf;          /* was too dark */
+    font-size: 14px;
 }
-
 
 /* ============================================================
    MESSAGES
 ============================================================ */
-
 .message {
     width: 100%;
     max-width: 950px;
-
     display: flex;
     align-items: flex-start;
-
     gap: 13px;
-
     margin-bottom: 24px;
 }
 
@@ -632,11 +506,8 @@ button {
 
 .message strong {
     display: inline-block;
-
     margin-right: 8px;
-
     color: #ffffff;
-
     font-size: 14px;
 }
 
@@ -646,49 +517,34 @@ button {
 
 .message p {
     margin: 6px 0 0;
-
-    color: #d0cdd8;
-
+    color: #d8d5e2;
     font-size: 14px;
     line-height: 1.65;
-
     word-break: break-word;
 }
 
 .role {
     display: inline-block;
-
     padding: 3px 7px;
-
-    border: 1px solid #3a3945;
+    border: 1px solid #42414f;
     border-radius: 5px;
-
-    background: #25242e;
-
-    color: #c5c2cd;
-
+    background: #282733;
+    color: #d0cdd9;
     font-size: 9px;
     font-weight: 800;
-
     letter-spacing: 0.3px;
     text-transform: uppercase;
 }
 
-
 /* ============================================================
    MESSAGE COMPOSER
 ============================================================ */
-
 .message-form {
     flex: 0 0 auto;
-
     display: flex;
     align-items: center;
-
     gap: 10px;
-
     padding: 14px 30px 22px;
-
     background: #0c0c11;
 }
 
@@ -696,80 +552,60 @@ button {
     flex: 1;
     min-width: 0;
     min-height: 48px;
-
     padding: 0 16px;
-
-    border: 1px solid #363541;
+    border: 1px solid #3f3e4c;
     border-radius: 11px;
-
     outline: none;
-
-    background: #15151c;
+    background: #16161f;
     color: #ffffff;
-
     font-size: 14px;
 }
 
 .message-form input::placeholder {
-    color: #777482;
+    color: #8a8798;          /* more readable */
 }
 
 .message-form input:focus {
-    border-color: #686576;
-    background: #17171f;
+    border-color: #6e6b80;
+    background: #1a1a24;
 }
 
 .message-form .primary-button {
     min-height: 48px;
     padding: 0 23px;
-
     flex: 0 0 auto;
 }
-
 
 /* ============================================================
    RIGHT ONLINE SIDEBAR
 ============================================================ */
-
 .members-sidebar {
     width: 230px;
     flex: 0 0 230px;
-
     display: flex;
     flex-direction: column;
-
     min-height: 0;
-
     padding: 24px 15px;
-
     background: #101016;
-
-    border-left: 1px solid #292933;
+    border-left: 1px solid #2e2e3a;
 }
 
 .members-sidebar h3 {
     flex: 0 0 auto;
-
     margin: 0 8px 18px;
-
-    color: #f3f1f6;
-
+    color: #e8e5f0;          /* was too light/faded */
     font-size: 13px;
     font-weight: 800;
-
     letter-spacing: 0.8px;
     text-transform: uppercase;
 }
 
 #onlineUsers {
     min-height: 0;
-
     overflow-y: auto;
-
     padding-right: 3px;
-
     scrollbar-width: thin;
-    scrollbar-color: #3c3b47 transparent;
+    scrollbar-color: #4a4958 transparent;
 }
 
 #onlineUsers::-webkit-scrollbar {
@@ -778,28 +614,22 @@ button {
 
 #onlineUsers::-webkit-scrollbar-thumb {
     border-radius: 20px;
-    background: #3c3b47;
+    background: #3f3e4c;
 }
 
 .online-user {
     width: 100%;
-
     display: flex;
     align-items: center;
-
     gap: 10px;
-
     padding: 9px 8px;
-
     border-radius: 9px;
-
-    color: #d0cdd7;
-
+    color: #d4d1de;          /* much more readable */
     font-size: 13px;
 }
 
 .online-user:hover {
-    background: #1a1a22;
+    background: #1c1c26;
     color: #ffffff;
 }
 
@@ -807,174 +637,114 @@ button {
     width: 9px;
     height: 9px;
     flex: 0 0 9px;
-
     border-radius: 50%;
-
     background: #58dc68;
-
-    box-shadow: 0 0 0 3px rgba(88, 220, 104, 0.08);
+    box-shadow: 0 0 0 3px rgba(88, 220, 104, 0.12);
 }
-
 
 /* ============================================================
    PROFILE MODAL
 ============================================================ */
-
 .modal {
     position: fixed;
     inset: 0;
-
     z-index: 1000;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     padding: 24px;
-
     background: rgba(0, 0, 0, 0.76);
-
     backdrop-filter: blur(7px);
 }
 
 .modal-card {
     position: relative;
-
     width: min(430px, 100%);
-
     padding: 34px;
-
-    border: 1px solid #3a3947;
+    border: 1px solid #42414f;
     border-radius: 22px;
-
     background: #171720;
-
     color: #ffffff;
-
-    box-shadow:
-        0 30px 100px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7);
 }
-
-
-/* Close button */
 
 .close-button {
     position: absolute;
     top: 13px;
     right: 13px;
-
     width: 38px;
     height: 38px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     border: 1px solid transparent;
     border-radius: 10px;
-
     background: transparent;
-
-    color: #aaa7b4;
-
+    color: #b8b5c4;
     font-size: 25px;
     line-height: 1;
 }
 
 .close-button:hover {
-    border-color: #383743;
-    background: #24232d;
+    border-color: #3f3e4c;
+    background: #262533;
     color: #ffffff;
 }
-
-
-/* Big profile avatar */
 
 .large-avatar {
     width: 100px;
     height: 100px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     margin: 4px auto 20px;
-
-    border: 2px solid #444353;
+    border: 2px solid #4a4958;
     border-radius: 50%;
-
-    background: #2b2a37;
-
+    background: #2d2c39;
     color: #ffffff;
-
     font-size: 38px;
     font-weight: 800;
-
-    box-shadow:
-        0 15px 45px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.35);
 }
-
-
-/* Profile name */
 
 #profileName {
     margin: 0;
-
     color: #ffffff;
-
     font-size: 26px;
     font-weight: 800;
-
     text-align: center;
 }
-
-
-/* Bio */
 
 #profileBio {
     max-width: 340px;
-
     margin: 11px auto 26px;
-
-    color: #b5b2bf;
-
+    color: #c4c1cf;
     font-size: 14px;
     line-height: 1.7;
-
     text-align: center;
 }
-
-
-/* Profile button */
 
 #editProfileButton {
     margin-top: 2px;
 }
 
-
 /* ============================================================
    EDIT PROFILE MODAL
 ============================================================ */
-
 #editProfileModal .modal-card {
     text-align: left;
 }
 
 #editProfileModal .modal-card h2 {
     margin: 0 0 24px;
-
     color: #ffffff;
-
     font-size: 24px;
 }
 
 #editProfileModal label {
     display: block;
-
     margin: 18px 0 8px;
-
-    color: #ddd9e5;
-
+    color: #e4e1ec;
     font-size: 13px;
     font-weight: 700;
 }
@@ -982,15 +752,11 @@ button {
 #editProfileModal input,
 #editProfileModal textarea {
     width: 100%;
-
-    border: 1px solid #3a3946;
+    border: 1px solid #42414f;
     border-radius: 10px;
-
     outline: none;
-
     background: #0e0e14;
     color: #ffffff;
-
     font-size: 14px;
 }
 
@@ -1002,18 +768,17 @@ button {
 #editProfileModal textarea {
     min-height: 120px;
     padding: 13px 14px;
-
     resize: vertical;
 }
 
 #editProfileModal input::placeholder,
 #editProfileModal textarea::placeholder {
-    color: #777482;
+    color: #8a8798;
 }
 
 #editProfileModal input:focus,
 #editProfileModal textarea:focus {
-    border-color: #77748a;
+    border-color: #7a7790;
     background: #111118;
 }
 
@@ -1021,13 +786,10 @@ button {
     margin-top: 24px;
 }
 
-
 /* ============================================================
    MOBILE
 ============================================================ */
-
 @media (max-width: 850px) {
-
     .sidebar {
         width: 195px;
         flex-basis: 195px;
@@ -1050,9 +812,7 @@ button {
     }
 }
 
-
 @media (max-width: 700px) {
-
     #chatPage,
     .chat-layout {
         height: 100vh;
@@ -1061,7 +821,6 @@ button {
     .sidebar {
         width: 72px;
         flex-basis: 72px;
-
         padding: 15px 7px;
     }
 
@@ -1076,9 +835,7 @@ button {
 
     .room {
         justify-content: center;
-
         padding: 13px 8px;
-
         font-size: 0;
     }
 
@@ -1096,24 +853,19 @@ button {
 
     .sidebar-bottom .secondary-button {
         padding: 0;
-
         font-size: 0;
     }
 
     .sidebar-bottom .secondary-button::after {
         content: "↪";
-
         font-size: 18px;
     }
 
     .members-sidebar {
         width: 0;
         flex-basis: 0;
-
         padding: 0;
-
         overflow: hidden;
-
         border-left: none;
     }
 
@@ -1123,7 +875,7 @@ button {
 
     .chat-header h2 {
         font-size: 18px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .messages {
@@ -1137,7 +889,6 @@ button {
 
     .message-form {
         gap: 8px;
-
         padding: 10px 12px 14px;
     }
 
@@ -1170,4 +921,3 @@ button {
         padding: 28px 22px;
     }
 }
-```
