@@ -1,15 +1,23 @@
+```js
 // ============================================================
-// AFTERHOURS - Fixed Version
+// AFTERHOURS - Fixed Version + Profile Pictures
 // ============================================================
 
 const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kb_dDY7fXA0yTkyQyoBwYw_1lkqf6GF";
 
-// Safely create Supabase client (won't crash the whole app if it fails)
+// Safely create Supabase client
 let supabaseClient = null;
+
 try {
-    if (window.supabase && typeof window.supabase.createClient === "function") {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (
+        window.supabase &&
+        typeof window.supabase.createClient === "function"
+    ) {
+        supabaseClient = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
     } else {
         console.warn("Supabase library not loaded");
     }
@@ -17,68 +25,125 @@ try {
     console.error("Supabase client error:", err);
 }
 
-// Current user
+
+// ============================================================
+// CURRENT USER
+// ============================================================
+
 let currentUser = {
     id: null,
     username: "",
     displayName: "",
     bio: "",
+    avatarUrl: "",
     role: "Member"
 };
 
-// Helper
+
+// ============================================================
+// HELPER
+// ============================================================
+
 function get(id) {
     return document.getElementById(id);
 }
 
-// =========================
+
+// ============================================================
 // PAGE SWITCHING
-// =========================
+// ============================================================
+
 function hideAllPages() {
-    ["landingPage", "loginPage", "registerPage", "chatPage"].forEach(function (id) {
+    [
+        "landingPage",
+        "loginPage",
+        "registerPage",
+        "chatPage"
+    ].forEach(function (id) {
+
         const el = get(id);
-        if (el) el.classList.add("hidden");
+
+        if (el) {
+            el.classList.add("hidden");
+        }
+
     });
 }
 
+
 function showLanding() {
     hideAllPages();
+
     const page = get("landingPage");
-    if (page) page.classList.remove("hidden");
+
+    if (page) {
+        page.classList.remove("hidden");
+    }
 }
+
 
 function showLogin() {
     hideAllPages();
+
     const page = get("loginPage");
-    if (page) page.classList.remove("hidden");
+
+    if (page) {
+        page.classList.remove("hidden");
+    }
+
     setTimeout(function () {
+
         const input = get("loginEmail");
-        if (input) input.focus();
+
+        if (input) {
+            input.focus();
+        }
+
     }, 50);
 }
+
 
 function showRegister() {
     hideAllPages();
+
     const page = get("registerPage");
-    if (page) page.classList.remove("hidden");
+
+    if (page) {
+        page.classList.remove("hidden");
+    }
+
     setTimeout(function () {
+
         const input = get("registerUsername");
-        if (input) input.focus();
+
+        if (input) {
+            input.focus();
+        }
+
     }, 50);
 }
 
+
 function showChat() {
     hideAllPages();
+
     const page = get("chatPage");
-    if (page) page.classList.remove("hidden");
+
+    if (page) {
+        page.classList.remove("hidden");
+    }
+
     updateUser();
     updateOnlineUsers();
 }
 
-// =========================
+
+// ============================================================
 // AUTH
-// =========================
+// ============================================================
+
 async function login() {
+
     if (!supabaseClient) {
         alert("Login is currently unavailable. Please try again later.");
         return;
@@ -91,20 +156,24 @@ async function login() {
         alert("Please enter your email.");
         return;
     }
+
     if (!password) {
         alert("Please enter your password.");
         return;
     }
 
     const button = get("loginSubmit");
+
     button.disabled = true;
     button.textContent = "Logging in...";
 
     try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
+
+        const { data, error } =
+            await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
 
         if (error) {
             console.error(error);
@@ -113,26 +182,42 @@ async function login() {
         }
 
         const user = data.user;
+
         if (!user) {
             alert("Login failed.");
             return;
         }
 
         if (!user.email_confirmed_at) {
+
             await supabaseClient.auth.signOut();
-            alert("Please verify your email before logging in.");
+
+            alert(
+                "Please verify your email before logging in."
+            );
+
             return;
         }
 
-        const { data: profile, error: profileError } = await supabaseClient
+        const {
+            data: profile,
+            error: profileError
+        } = await supabaseClient
             .from("profiles")
-            .select("id, username, display_name, bio, role")
+            .select(
+                "id, username, display_name, bio, avatar_url, role"
+            )
             .eq("id", user.id)
             .single();
 
         if (profileError || !profile) {
+
             console.error(profileError);
-            alert("Your account exists, but your profile could not be loaded.");
+
+            alert(
+                "Your account exists, but your profile could not be loaded."
+            );
+
             return;
         }
 
@@ -141,302 +226,918 @@ async function login() {
             username: profile.username,
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
+            avatarUrl: profile.avatar_url || "",
             role: profile.role || "Member"
         };
 
         updateUser();
+
         showChat();
+
     } catch (err) {
+
         console.error(err);
-        alert("Something went wrong during login.");
+
+        alert(
+            "Something went wrong during login."
+        );
+
     } finally {
+
         button.disabled = false;
         button.textContent = "Log In";
+
     }
 }
 
+
 async function register() {
+
     if (!supabaseClient) {
-        alert("Registration is currently unavailable. Please try again later.");
+        alert(
+            "Registration is currently unavailable. Please try again later."
+        );
         return;
     }
 
-    const username = get("registerUsername").value.trim();
-    const email = get("registerEmail").value.trim();
-    const password = get("registerPassword").value;
+    const username =
+        get("registerUsername").value.trim();
+
+    const email =
+        get("registerEmail").value.trim();
+
+    const password =
+        get("registerPassword").value;
+
 
     if (!username) {
         alert("Please choose a username.");
         return;
     }
+
     if (username.length < 3) {
         alert("Username must be at least 3 characters.");
         return;
     }
+
     if (!email) {
         alert("Please enter your email.");
         return;
     }
+
     if (!email.includes("@")) {
         alert("Please enter a valid email.");
         return;
     }
+
     if (!password) {
         alert("Please choose a password.");
         return;
     }
+
     if (password.length < 8) {
         alert("Password must be at least 8 characters.");
         return;
     }
 
+
     const button = get("registerSubmit");
+
     button.disabled = true;
     button.textContent = "Creating account...";
 
+
     try {
-        // Check username availability
-        const { data: existing, error: checkError } = await supabaseClient
+
+        const {
+            data: existing,
+            error: checkError
+        } = await supabaseClient
             .from("profiles")
             .select("id")
             .eq("username", username)
             .maybeSingle();
 
+
         if (checkError) {
+
             console.error(checkError);
-            alert("Unable to check username availability.");
-            return;
-        }
-        if (existing) {
-            alert("That username is already taken.");
+
+            alert(
+                "Unable to check username availability."
+            );
+
             return;
         }
 
-        const { data, error } = await supabaseClient.auth.signUp({
+
+        if (existing) {
+
+            alert(
+                "That username is already taken."
+            );
+
+            return;
+        }
+
+
+        const {
+            data,
+            error
+        } = await supabaseClient.auth.signUp({
+
             email: email,
+
             password: password,
+
             options: {
+
                 data: {
                     username: username,
                     display_name: username
                 }
+
             }
+
         });
 
+
         if (error) {
+
             console.error(error);
+
             alert(error.message);
+
             return;
         }
+
 
         if (!data.user) {
-            alert("Account creation failed.");
+
+            alert(
+                "Account creation failed."
+            );
+
             return;
         }
 
-        alert("Account created! Check your email and verify your account before logging in.");
+
+        alert(
+            "Account created! Check your email and verify your account before logging in."
+        );
+
+
         get("registerUsername").value = "";
         get("registerEmail").value = "";
         get("registerPassword").value = "";
+
         showLogin();
+
+
     } catch (err) {
+
         console.error(err);
-        alert("Something went wrong during registration.");
+
+        alert(
+            "Something went wrong during registration."
+        );
+
     } finally {
+
         button.disabled = false;
         button.textContent = "Create Account";
+
     }
 }
 
+
 async function logout() {
+
     if (supabaseClient) {
         await supabaseClient.auth.signOut();
     }
+
     currentUser = {
         id: null,
         username: "",
         displayName: "",
         bio: "",
+        avatarUrl: "",
         role: "Member"
     };
+
     showLanding();
 }
 
-// =========================
-// USER UI
-// =========================
-function updateUser() {
-    const name = currentUser.displayName || currentUser.username || "User";
 
-    if (get("topUsername")) get("topUsername").textContent = name;
-    if (get("profileName")) get("profileName").textContent = name;
-    if (get("profileBio")) get("profileBio").textContent = currentUser.bio || "No bio yet.";
-    if (get("profileAvatar")) get("profileAvatar").textContent = name.charAt(0).toUpperCase();
-    if (get("sidebarAvatar")) get("sidebarAvatar").textContent = name.charAt(0).toUpperCase();
+// ============================================================
+// AVATARS
+// ============================================================
+
+function updateAvatar(element, name, avatarUrl) {
+
+    if (!element) {
+        return;
+    }
+
+    element.innerHTML = "";
+
+    if (avatarUrl) {
+
+        const image = document.createElement("img");
+
+        image.src = avatarUrl;
+        image.alt = name + "'s profile picture";
+
+        image.onerror = function () {
+
+            element.innerHTML = "";
+
+            element.textContent =
+                name.charAt(0).toUpperCase();
+
+        };
+
+        element.appendChild(image);
+
+        return;
+    }
+
+    element.textContent =
+        name.charAt(0).toUpperCase();
 }
 
+
+// ============================================================
+// USER UI
+// ============================================================
+
+function updateUser() {
+
+    const name =
+        currentUser.displayName ||
+        currentUser.username ||
+        "User";
+
+
+    if (get("topUsername")) {
+        get("topUsername").textContent = name;
+    }
+
+
+    if (get("profileName")) {
+        get("profileName").textContent = name;
+    }
+
+
+    if (get("profileBio")) {
+        get("profileBio").textContent =
+            currentUser.bio || "No bio yet.";
+    }
+
+
+    updateAvatar(
+        get("profileAvatar"),
+        name,
+        currentUser.avatarUrl
+    );
+
+
+    updateAvatar(
+        get("sidebarAvatar"),
+        name,
+        currentUser.avatarUrl
+    );
+}
+
+
 function updateOnlineUsers() {
-    const container = get("onlineUsers");
-    if (!container) return;
+
+    const container =
+        get("onlineUsers");
+
+    if (!container) {
+        return;
+    }
 
     container.innerHTML = "";
 
-    const user = document.createElement("div");
+
+    const user =
+        document.createElement("div");
+
     user.className = "online-user";
 
-    const dot = document.createElement("span");
+
+    const dot =
+        document.createElement("span");
+
     dot.className = "status-dot";
 
-    const name = document.createElement("span");
-    name.textContent = currentUser.displayName || currentUser.username || "User";
+
+    const avatar =
+        document.createElement("span");
+
+    avatar.className = "avatar";
+
+
+    updateAvatar(
+        avatar,
+        currentUser.displayName ||
+            currentUser.username ||
+            "User",
+        currentUser.avatarUrl
+    );
+
+
+    const name =
+        document.createElement("span");
+
+    name.textContent =
+        currentUser.displayName ||
+        currentUser.username ||
+        "User";
+
 
     user.appendChild(dot);
+    user.appendChild(avatar);
     user.appendChild(name);
+
     container.appendChild(user);
 }
 
-// =========================
+
+// ============================================================
 // PROFILE
-// =========================
+// ============================================================
+
 function openProfile() {
-    const modal = get("profileModal");
-    if (modal) modal.classList.remove("hidden");
+
+    const modal =
+        get("profileModal");
+
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
 }
+
 
 function closeProfile() {
-    const modal = get("profileModal");
-    if (modal) modal.classList.add("hidden");
+
+    const modal =
+        get("profileModal");
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
 }
+
 
 function openEditProfile() {
-    get("editName").value = currentUser.displayName || "";
-    get("editBio").value = (currentUser.bio === "No bio yet.") ? "" : (currentUser.bio || "");
+
+    get("editName").value =
+        currentUser.displayName || "";
+
+
+    get("editBio").value =
+        currentUser.bio === "No bio yet."
+            ? ""
+            : (currentUser.bio || "");
+
+
+    updateAvatar(
+        get("editAvatarPreview"),
+        currentUser.displayName ||
+            currentUser.username ||
+            "User",
+        currentUser.avatarUrl
+    );
+
+
+    const status =
+        get("avatarUploadStatus");
+
+    if (status) {
+
+        status.textContent =
+            "JPG, PNG, or WebP · Max 2 MB";
+    }
+
+
     closeProfile();
-    const modal = get("editProfileModal");
-    if (modal) modal.classList.remove("hidden");
+
+
+    const modal =
+        get("editProfileModal");
+
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
 }
+
 
 function closeEditProfile() {
-    const modal = get("editProfileModal");
-    if (modal) modal.classList.add("hidden");
+
+    const modal =
+        get("editProfileModal");
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
 }
+
+
+// ============================================================
+// PROFILE PICTURE UPLOAD
+// ============================================================
+
+async function uploadProfilePicture(file) {
+
+    if (!supabaseClient) {
+
+        alert(
+            "Profile pictures are currently unavailable."
+        );
+
+        return;
+    }
+
+
+    if (!currentUser.id) {
+
+        alert(
+            "You aren't logged in."
+        );
+
+        return;
+    }
+
+
+    if (!file) {
+        return;
+    }
+
+
+    const allowedTypes = [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+    ];
+
+
+    if (!allowedTypes.includes(file.type)) {
+
+        alert(
+            "Please choose a PNG, JPG, or WebP image."
+        );
+
+        return;
+    }
+
+
+    const maxSize =
+        2 * 1024 * 1024;
+
+
+    if (file.size > maxSize) {
+
+        alert(
+            "Your profile picture must be 2 MB or smaller."
+        );
+
+        return;
+    }
+
+
+    const status =
+        get("avatarUploadStatus");
+
+
+    if (status) {
+        status.textContent =
+            "Uploading picture...";
+    }
+
+
+    try {
+
+        const extension =
+            file.type === "image/png"
+                ? "png"
+                : file.type === "image/webp"
+                    ? "webp"
+                    : "jpg";
+
+
+        const filePath =
+            currentUser.id +
+            "/avatar-" +
+            Date.now() +
+            "." +
+            extension;
+
+
+        const {
+            error: uploadError
+        } = await supabaseClient.storage
+            .from("avatars")
+            .upload(
+                filePath,
+                file,
+                {
+                    contentType: file.type,
+                    cacheControl: "3600",
+                    upsert: false
+                }
+            );
+
+
+        if (uploadError) {
+
+            console.error(uploadError);
+
+            alert(
+                "Unable to upload your profile picture."
+            );
+
+            if (status) {
+                status.textContent =
+                    "Upload failed.";
+            }
+
+            return;
+        }
+
+
+        const {
+            data: publicData
+        } = supabaseClient.storage
+            .from("avatars")
+            .getPublicUrl(filePath);
+
+
+        const avatarUrl =
+            publicData.publicUrl;
+
+
+        const {
+            error: profileError
+        } = await supabaseClient
+            .from("profiles")
+            .update({
+                avatar_url: avatarUrl
+            })
+            .eq("id", currentUser.id);
+
+
+        if (profileError) {
+
+            console.error(profileError);
+
+            alert(
+                "The picture uploaded, but your profile could not be updated."
+            );
+
+            return;
+        }
+
+
+        currentUser.avatarUrl =
+            avatarUrl;
+
+
+        updateUser();
+
+
+        updateAvatar(
+            get("editAvatarPreview"),
+            currentUser.displayName ||
+                currentUser.username ||
+                "User",
+            currentUser.avatarUrl
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                "Profile picture updated!";
+        }
+
+
+        // Allow selecting the same file again later
+        const input =
+            get("avatarFile");
+
+        if (input) {
+            input.value = "";
+        }
+
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Something went wrong while uploading your picture."
+        );
+
+        if (status) {
+            status.textContent =
+                "Upload failed.";
+        }
+    }
+}
+
+
+// ============================================================
+// SAVE PROFILE
+// ============================================================
 
 async function saveProfile() {
+
     if (!supabaseClient) {
-        alert("Unable to save profile right now.");
+
+        alert(
+            "Unable to save profile right now."
+        );
+
         return;
     }
 
-    const displayName = get("editName").value.trim();
-    const bio = get("editBio").value.trim();
+
+    const displayName =
+        get("editName").value.trim();
+
+
+    const bio =
+        get("editBio").value.trim();
+
 
     if (!displayName) {
-        alert("Display name cannot be empty.");
-        return;
-    }
-    if (!currentUser.id) {
-        alert("You aren't logged in.");
+
+        alert(
+            "Display name cannot be empty."
+        );
+
         return;
     }
 
-    const { error } = await supabaseClient
+
+    if (!currentUser.id) {
+
+        alert(
+            "You aren't logged in."
+        );
+
+        return;
+    }
+
+
+    const {
+        error
+    } = await supabaseClient
         .from("profiles")
         .update({
-            display_name: displayName,
-            bio: bio
+
+            display_name:
+                displayName,
+
+            bio:
+                bio
+
         })
-        .eq("id", currentUser.id);
+        .eq(
+            "id",
+            currentUser.id
+        );
+
 
     if (error) {
+
         console.error(error);
-        alert("Unable to save profile.");
+
+        alert(
+            "Unable to save profile."
+        );
+
         return;
     }
 
-    currentUser.displayName = displayName;
-    currentUser.bio = bio || "No bio yet.";
+
+    currentUser.displayName =
+        displayName;
+
+
+    currentUser.bio =
+        bio || "No bio yet.";
+
+
     updateUser();
+
     updateOnlineUsers();
+
     closeEditProfile();
-    alert("Profile saved!");
+
+
+    alert(
+        "Profile saved!"
+    );
 }
 
-// =========================
+
+// ============================================================
 // MESSAGES
-// =========================
+// ============================================================
+
 function sendMessage() {
-    const input = get("messageInput");
-    const messages = get("messages");
-    const text = input.value.trim();
-    if (!text) return;
 
-    const welcome = messages.querySelector(".welcome-message");
-    if (welcome) welcome.remove();
+    const input =
+        get("messageInput");
 
-    const name = currentUser.displayName || currentUser.username || "User";
 
-    const message = document.createElement("div");
-    message.className = "message";
+    const messages =
+        get("messages");
 
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-    avatar.textContent = name.charAt(0).toUpperCase();
 
-    const content = document.createElement("div");
+    const text =
+        input.value.trim();
 
-    const username = document.createElement("strong");
-    username.textContent = name;
 
-    const role = document.createElement("span");
-    role.className = "role";
-    role.textContent = currentUser.role;
+    if (!text) {
+        return;
+    }
 
-    const textElement = document.createElement("p");
-    textElement.textContent = text;
 
-    content.appendChild(username);
-    content.appendChild(role);
-    content.appendChild(textElement);
+    const welcome =
+        messages.querySelector(
+            ".welcome-message"
+        );
 
-    message.appendChild(avatar);
-    message.appendChild(content);
-    messages.appendChild(message);
+
+    if (welcome) {
+        welcome.remove();
+    }
+
+
+    const name =
+        currentUser.displayName ||
+        currentUser.username ||
+        "User";
+
+
+    const message =
+        document.createElement("div");
+
+    message.className =
+        "message";
+
+
+    const avatar =
+        document.createElement("div");
+
+    avatar.className =
+        "avatar";
+
+
+    updateAvatar(
+        avatar,
+        name,
+        currentUser.avatarUrl
+    );
+
+
+    const content =
+        document.createElement("div");
+
+
+    const username =
+        document.createElement("strong");
+
+    username.textContent =
+        name;
+
+
+    const role =
+        document.createElement("span");
+
+    role.className =
+        "role";
+
+    role.textContent =
+        currentUser.role;
+
+
+    const textElement =
+        document.createElement("p");
+
+    textElement.textContent =
+        text;
+
+
+    content.appendChild(
+        username
+    );
+
+    content.appendChild(
+        role
+    );
+
+    content.appendChild(
+        textElement
+    );
+
+
+    message.appendChild(
+        avatar
+    );
+
+    message.appendChild(
+        content
+    );
+
+
+    messages.appendChild(
+        message
+    );
+
 
     input.value = "";
-    messages.scrollTop = messages.scrollHeight;
+
+    messages.scrollTop =
+        messages.scrollHeight;
 }
 
-// =========================
+
+// ============================================================
 // ROOMS
-// =========================
+// ============================================================
+
 const rooms = {
+
     general: {
         title: "💬 General",
         description: "Talk. Connect. Chill."
     },
+
     gaming: {
         title: "🎮 Gaming",
         description: "Talk about games."
     },
+
     music: {
         title: "🎵 Music",
         description: "Share music and discover new stuff."
     }
+
 };
 
-function changeRoom(roomName, button) {
-    const room = rooms[roomName];
-    if (!room) return;
 
-    document.querySelectorAll(".room").forEach(function (btn) {
-        btn.classList.remove("active");
-    });
+function changeRoom(
+    roomName,
+    button
+) {
 
-    if (button) button.classList.add("active");
+    const room =
+        rooms[roomName];
 
-    get("roomTitle").textContent = room.title;
-    get("roomDescription").textContent = room.description;
-    get("messageInput").placeholder = "Message " + room.title.substring(2) + "...";
+
+    if (!room) {
+        return;
+    }
+
+
+    document
+        .querySelectorAll(".room")
+        .forEach(function (btn) {
+
+            btn.classList.remove(
+                "active"
+            );
+
+        });
+
+
+    if (button) {
+        button.classList.add(
+            "active"
+        );
+    }
+
+
+    get("roomTitle").textContent =
+        room.title;
+
+
+    get("roomDescription").textContent =
+        room.description;
+
+
+    get("messageInput").placeholder =
+        "Message " +
+        room.title.substring(2) +
+        "...";
+
 
     get("messages").innerHTML = `
         <div class="welcome-message">
@@ -447,106 +1148,287 @@ function changeRoom(roomName, button) {
     `;
 }
 
-// =========================
-// SETUP BUTTONS (this always runs)
-// =========================
+
+// ============================================================
+// SETUP BUTTONS
+// ============================================================
+
 function setupButtons() {
-    // Landing buttons
-    get("loginButton").addEventListener("click", showLogin);
-    get("registerButton").addEventListener("click", showRegister);
 
-    // Login page
-    get("backFromLogin").addEventListener("click", showLanding);
-    get("loginToRegister").addEventListener("click", showRegister);
-    get("loginForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        login();
-    });
+    // Landing
+    get("loginButton")
+        .addEventListener(
+            "click",
+            showLogin
+        );
 
-    // Register page
-    get("backFromRegister").addEventListener("click", showLanding);
-    get("registerToLogin").addEventListener("click", showLogin);
-    get("registerForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        register();
-    });
+
+    get("registerButton")
+        .addEventListener(
+            "click",
+            showRegister
+        );
+
+
+    // Login
+    get("backFromLogin")
+        .addEventListener(
+            "click",
+            showLanding
+        );
+
+
+    get("loginToRegister")
+        .addEventListener(
+            "click",
+            showRegister
+        );
+
+
+    get("loginForm")
+        .addEventListener(
+            "submit",
+            function (e) {
+
+                e.preventDefault();
+
+                login();
+
+            }
+        );
+
+
+    // Register
+    get("backFromRegister")
+        .addEventListener(
+            "click",
+            showLanding
+        );
+
+
+    get("registerToLogin")
+        .addEventListener(
+            "click",
+            showLogin
+        );
+
+
+    get("registerForm")
+        .addEventListener(
+            "submit",
+            function (e) {
+
+                e.preventDefault();
+
+                register();
+
+            }
+        );
+
 
     // Chat
-    get("logoutButton").addEventListener("click", logout);
-    get("profileButton").addEventListener("click", openProfile);
-    get("closeProfileButton").addEventListener("click", closeProfile);
-    get("editProfileButton").addEventListener("click", openEditProfile);
-    get("closeEditProfileButton").addEventListener("click", closeEditProfile);
-    get("saveProfileButton").addEventListener("click", saveProfile);
+    get("logoutButton")
+        .addEventListener(
+            "click",
+            logout
+        );
+
+
+    get("profileButton")
+        .addEventListener(
+            "click",
+            openProfile
+        );
+
+
+    get("closeProfileButton")
+        .addEventListener(
+            "click",
+            closeProfile
+        );
+
+
+    get("editProfileButton")
+        .addEventListener(
+            "click",
+            openEditProfile
+        );
+
+
+    get("closeEditProfileButton")
+        .addEventListener(
+            "click",
+            closeEditProfile
+        );
+
+
+    get("saveProfileButton")
+        .addEventListener(
+            "click",
+            saveProfile
+        );
+
+
+    // Profile picture picker
+    get("avatarFile")
+        .addEventListener(
+            "change",
+            function (event) {
+
+                const file =
+                    event.target.files[0];
+
+                if (file) {
+                    uploadProfilePicture(file);
+                }
+
+            }
+        );
+
 
     // Messages
-    get("messageForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        sendMessage();
-    });
+    get("messageForm")
+        .addEventListener(
+            "submit",
+            function (e) {
+
+                e.preventDefault();
+
+                sendMessage();
+
+            }
+        );
+
 
     // Rooms
-    document.querySelectorAll(".room").forEach(function (button) {
-        button.addEventListener("click", function () {
-            changeRoom(button.dataset.room, button);
+    document
+        .querySelectorAll(".room")
+        .forEach(function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    changeRoom(
+                        button.dataset.room,
+                        button
+                    );
+
+                }
+            );
+
         });
-    });
 }
 
-// =========================
+
+// ============================================================
 // SESSION
-// =========================
+// ============================================================
+
 async function checkSession() {
+
     if (!supabaseClient) {
+
         showLanding();
+
         return;
     }
 
-    try {
-        const { data, error } = await supabaseClient.auth.getSession();
 
-        if (error || !data.session) {
+    try {
+
+        const {
+            data,
+            error
+        } = await supabaseClient.auth.getSession();
+
+
+        if (
+            error ||
+            !data.session
+        ) {
+
             showLanding();
+
             return;
         }
 
-        const user = data.session.user;
+
+        const user =
+            data.session.user;
+
 
         if (!user.email_confirmed_at) {
+
             await supabaseClient.auth.signOut();
+
             showLanding();
+
             return;
         }
 
-        const { data: profile, error: profileError } = await supabaseClient
+
+        const {
+            data: profile,
+            error: profileError
+        } = await supabaseClient
             .from("profiles")
-            .select("id, username, display_name, bio, role")
-            .eq("id", user.id)
+            .select(
+                "id, username, display_name, bio, avatar_url, role"
+            )
+            .eq(
+                "id",
+                user.id
+            )
             .single();
 
-        if (profileError || !profile) {
+
+        if (
+            profileError ||
+            !profile
+        ) {
+
+            console.error(
+                profileError
+            );
+
             await supabaseClient.auth.signOut();
+
             showLanding();
+
             return;
         }
+
 
         currentUser = {
             id: profile.id,
             username: profile.username,
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
+            avatarUrl: profile.avatar_url || "",
             role: profile.role || "Member"
         };
 
+
         showChat();
+
+
     } catch (err) {
-        console.error("Session check failed:", err);
+
+        console.error(
+            "Session check failed:",
+            err
+        );
+
         showLanding();
     }
 }
 
-// =========================
-// START THE APP
-// =========================
-setupButtons();   // Attach all button listeners FIRST
-checkSession();   // Then check if user is already logged in
+
+// ============================================================
+// START
+// ============================================================
+
+setupButtons();
+checkSession();
+```
