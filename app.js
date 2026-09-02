@@ -435,6 +435,49 @@ async function logout() {
 
 function updateAvatar(element, name, avatarUrl) {
 
+function saveLocalAvatar(file, status) {
+    return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+
+        reader.addEventListener("load", function () {
+            const avatarUrl = reader.result;
+
+            try {
+                localStorage.setItem(
+                    "afterhours-avatar-" + currentUser.id,
+                    avatarUrl
+                );
+            } catch (error) {
+                reject(error);
+                return;
+            }
+
+            currentUser.avatarUrl = avatarUrl;
+            updateUser();
+            updateAvatar(
+                get("editAvatarPreview"),
+                currentUser.displayName || currentUser.username || "User",
+                avatarUrl
+            );
+
+            if (status) {
+                status.textContent = "Saved on this device.";
+            }
+
+            resolve();
+        });
+
+        reader.addEventListener("error", reject);
+        reader.readAsDataURL(file);
+    });
+}
+
+        if (!currentUser.avatarUrl) {
+            currentUser.avatarUrl = localStorage.getItem(
+                "afterhours-avatar-" + currentUser.id
+            ) || "";
+        }
+
     if (!element) {
         return;
     }
@@ -787,14 +830,7 @@ async function uploadProfilePicture(file) {
 
             console.error(uploadError);
 
-            alert(
-                "Unable to upload your profile picture."
-            );
-
-            if (status) {
-                status.textContent =
-                    "Upload failed.";
-            }
+            await saveLocalAvatar(file, status);
 
             return;
         }
@@ -825,9 +861,7 @@ async function uploadProfilePicture(file) {
 
             console.error(profileError);
 
-            alert(
-                "The picture uploaded, but your profile could not be updated."
-            );
+            await saveLocalAvatar(file, status);
 
             return;
         }
