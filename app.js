@@ -1,4 +1,3 @@
-```js
 // ============================================================
 // AFTERHOURS - Fixed Version + Profile Pictures
 // ============================================================
@@ -1431,4 +1430,3 @@ async function checkSession() {
 
 setupButtons();
 checkSession();
-```
