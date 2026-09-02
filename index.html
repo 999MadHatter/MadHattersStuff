@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -31,10 +32,13 @@
                 <form id="loginForm">
                     <label for="loginEmail">Email</label>
                     <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+
                     <label for="loginPassword">Password</label>
                     <input id="loginPassword" type="password" placeholder="Your password" autocomplete="current-password" required>
+
                     <button id="loginSubmit" type="submit" class="primary-button full-button">Log In</button>
                 </form>
+
                 <p class="auth-switch">
                     Don't have an account?
                     <button id="loginToRegister" type="button">Create one</button>
@@ -50,15 +54,20 @@
                 <button id="backFromRegister" type="button" class="back-button">← Back</button>
                 <h2>Create your account</h2>
                 <p>Join Afterhours.</p>
+
                 <form id="registerForm">
                     <label for="registerUsername">Username</label>
                     <input id="registerUsername" type="text" placeholder="Choose a username" autocomplete="username" maxlength="24" required>
+
                     <label for="registerEmail">Email</label>
                     <input id="registerEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+
                     <label for="registerPassword">Password</label>
                     <input id="registerPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
+
                     <button id="registerSubmit" type="submit" class="primary-button full-button">Create Account</button>
                 </form>
+
                 <p class="auth-switch">
                     Already have an account?
                     <button id="registerToLogin" type="button">Log in</button>
@@ -70,29 +79,38 @@
     <!-- CHAT -->
     <main id="chatPage" class="hidden">
         <div class="chat-layout">
+
+            <!-- LEFT SIDEBAR -->
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <h2>Afterhours</h2>
                 </div>
+
                 <div class="rooms">
                     <button type="button" class="room active" data-room="general">💬 General</button>
                     <button type="button" class="room" data-room="gaming">🎮 Gaming</button>
                     <button type="button" class="room" data-room="music">🎵 Music</button>
                 </div>
+
                 <div class="sidebar-bottom">
                     <button id="profileButton" type="button" class="profile-button">
                         <span id="sidebarAvatar" class="avatar">?</span>
                         <span id="topUsername">User</span>
                     </button>
-                    <button id="logoutButton" type="button" class="secondary-button">Log Out</button>
+
+                    <button id="logoutButton" type="button" class="secondary-button">
+                        Log Out
+                    </button>
                 </div>
             </aside>
 
+            <!-- CENTER CHAT -->
             <section class="chat-area">
                 <header class="chat-header">
                     <h2 id="roomTitle">💬 General</h2>
                     <p id="roomDescription">Talk. Connect. Chill.</p>
                 </header>
+
                 <div id="messages" class="messages">
                     <div class="welcome-message">
                         <div class="welcome-icon">💬</div>
@@ -100,12 +118,21 @@
                         <p>Send the first message.</p>
                     </div>
                 </div>
+
                 <form id="messageForm" class="message-form">
-                    <input id="messageInput" type="text" placeholder="Message General..." autocomplete="off">
-                    <button type="submit" class="primary-button">Send</button>
+                    <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="Message General..."
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="primary-button">
+                        Send
+                    </button>
                 </form>
             </section>
 
+            <!-- RIGHT ONLINE SIDEBAR -->
             <aside class="members-sidebar">
                 <h3>Online</h3>
                 <div id="onlineUsers"></div>
@@ -116,28 +143,123 @@
     <!-- PROFILE MODAL -->
     <div id="profileModal" class="modal hidden">
         <div class="modal-card">
-            <button id="closeProfileButton" type="button" class="close-button">×</button>
-            <div id="profileAvatar" class="large-avatar">?</div>
+
+            <button
+                id="closeProfileButton"
+                type="button"
+                class="close-button"
+            >
+                ×
+            </button>
+
+            <!-- Profile picture -->
+            <div id="profileAvatar" class="large-avatar">
+                ?
+            </div>
+
             <h2 id="profileName">User</h2>
-            <p id="profileBio">No bio yet.</p>
-            <button id="editProfileButton" type="button" class="primary-button full-button">Edit Profile</button>
+
+            <p id="profileBio">
+                No bio yet.
+            </p>
+
+            <button
+                id="editProfileButton"
+                type="button"
+                class="primary-button full-button"
+            >
+                Edit Profile
+            </button>
+
         </div>
     </div>
 
     <!-- EDIT PROFILE MODAL -->
     <div id="editProfileModal" class="modal hidden">
         <div class="modal-card">
-            <button id="closeEditProfileButton" type="button" class="close-button">×</button>
+
+            <button
+                id="closeEditProfileButton"
+                type="button"
+                class="close-button"
+            >
+                ×
+            </button>
+
             <h2>Edit Profile</h2>
-            <label for="editName">Display Name</label>
-            <input id="editName" type="text" maxlength="40">
-            <label for="editBio">Bio</label>
-            <textarea id="editBio" maxlength="200"></textarea>
-            <button id="saveProfileButton" type="button" class="primary-button full-button">Save Changes</button>
+
+            <!-- PROFILE PICTURE UPLOAD -->
+            <div class="avatar-upload-section">
+
+                <div
+                    id="editAvatarPreview"
+                    class="large-avatar"
+                >
+                    ?
+                </div>
+
+                <label
+                    for="avatarFile"
+                    class="avatar-upload-button"
+                >
+                    Choose Profile Picture
+                </label>
+
+                <input
+                    id="avatarFile"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                >
+
+                <p
+                    id="avatarUploadStatus"
+                    class="avatar-upload-status"
+                >
+                    JPG, PNG, or WebP · Max 2 MB
+                </p>
+
+            </div>
+
+            <!-- DISPLAY NAME -->
+            <label for="editName">
+                Display Name
+            </label>
+
+            <input
+                id="editName"
+                type="text"
+                maxlength="40"
+            >
+
+            <!-- BIO -->
+            <label for="editBio">
+                Bio
+            </label>
+
+            <textarea
+                id="editBio"
+                maxlength="200"
+            ></textarea>
+
+            <!-- SAVE -->
+            <button
+                id="saveProfileButton"
+                type="button"
+                class="primary-button full-button"
+            >
+                Save Changes
+            </button>
+
         </div>
     </div>
 
+    <!-- SUPABASE -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- APP -->
     <script src="./app.js"></script>
+
 </body>
 </html>
+```
