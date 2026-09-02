@@ -778,6 +778,16 @@ button {
 .online-user:hover {
     background: #20212a;
 
+
+.online-user:focus-visible,
+.clickable-profile:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+.clickable-profile {
+    cursor: pointer;
+}
     color: #ffffff;
 }
 

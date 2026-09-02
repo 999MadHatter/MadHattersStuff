@@ -488,6 +488,10 @@ function updateUser() {
         get("profileName").textContent = name;
     }
 
+    if (get("profileRole")) {
+        get("profileRole").textContent = currentUser.role || "Member";
+    }
+
 
     if (get("profileBio")) {
         get("profileBio").textContent =
@@ -526,6 +530,15 @@ function updateOnlineUsers() {
         document.createElement("div");
 
     user.className = "online-user";
+    user.tabIndex = 0;
+    user.setAttribute("role", "button");
+    user.addEventListener("click", openProfile);
+    user.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openProfile();
+        }
+    });
 
 
     const dot =
@@ -572,10 +585,29 @@ function updateOnlineUsers() {
 
 function openProfile() {
 
+    openUserProfile(currentUser);
+}
+
+
+function openUserProfile(user) {
+
     const modal =
         get("profileModal");
 
+    const name =
+        user.displayName ||
+        user.username ||
+        "User";
+
     if (modal) {
+        get("profileName").textContent = name;
+        get("profileRole").textContent = user.role || "Member";
+        get("profileBio").textContent = user.bio || "No bio yet.";
+        updateAvatar(get("profileAvatar"), name, user.avatarUrl);
+        get("editProfileButton").classList.toggle(
+            "hidden",
+            user !== currentUser
+        );
         modal.classList.remove("hidden");
     }
 }
@@ -1059,6 +1091,25 @@ function sendMessage() {
     messages.appendChild(
         message
     );
+
+    avatar.classList.add("clickable-profile");
+    avatar.tabIndex = 0;
+    avatar.setAttribute("role", "button");
+    avatar.setAttribute("aria-label", "Open " + name + " profile");
+    avatar.addEventListener("click", function () {
+        openUserProfile({
+            displayName: name,
+            bio: "No bio yet.",
+            role: currentUser.role,
+            avatarUrl: currentUser.avatarUrl
+        });
+    });
+    avatar.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            avatar.click();
+        }
+    });
 
 
     input.value = "";
