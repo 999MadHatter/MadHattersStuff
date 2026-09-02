@@ -229,6 +229,12 @@ async function login() {
             role: profile.role || "Member"
         };
 
+        if (!currentUser.avatarUrl) {
+            currentUser.avatarUrl = localStorage.getItem(
+                "afterhours-avatar-" + currentUser.id
+            ) || "";
+        }
+
         updateUser();
 
         showChat();
@@ -435,6 +441,38 @@ async function logout() {
 
 function updateAvatar(element, name, avatarUrl) {
 
+    if (!element) {
+        return;
+    }
+
+    element.innerHTML = "";
+
+    if (avatarUrl) {
+
+        const image = document.createElement("img");
+
+        image.src = avatarUrl;
+        image.alt = name + "'s profile picture";
+
+        image.onerror = function () {
+
+            element.innerHTML = "";
+
+            element.textContent =
+                name.charAt(0).toUpperCase();
+
+        };
+
+        element.appendChild(image);
+
+        return;
+    }
+
+    element.textContent =
+        name.charAt(0).toUpperCase();
+}
+
+
 function saveLocalAvatar(file, status) {
     return new Promise(function (resolve, reject) {
         const reader = new FileReader();
@@ -470,43 +508,6 @@ function saveLocalAvatar(file, status) {
         reader.addEventListener("error", reject);
         reader.readAsDataURL(file);
     });
-}
-
-        if (!currentUser.avatarUrl) {
-            currentUser.avatarUrl = localStorage.getItem(
-                "afterhours-avatar-" + currentUser.id
-            ) || "";
-        }
-
-    if (!element) {
-        return;
-    }
-
-    element.innerHTML = "";
-
-    if (avatarUrl) {
-
-        const image = document.createElement("img");
-
-        image.src = avatarUrl;
-        image.alt = name + "'s profile picture";
-
-        image.onerror = function () {
-
-            element.innerHTML = "";
-
-            element.textContent =
-                name.charAt(0).toUpperCase();
-
-        };
-
-        element.appendChild(image);
-
-        return;
-    }
-
-    element.textContent =
-        name.charAt(0).toUpperCase();
 }
 
 
