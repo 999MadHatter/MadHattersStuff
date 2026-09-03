@@ -696,6 +696,58 @@ button {
     text-transform: uppercase;
 }
 
+.profile-rank {
+    display: block;
+    width: fit-content;
+    margin: 12px auto 0;
+    padding: 5px 10px;
+    border: 2px solid currentColor;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.rank-owner {
+    background: #4d3b08;
+    color: #f5c542;
+}
+
+.rank-developer {
+    background: #38205e;
+    color: #b887ff;
+}
+
+.rank-admin {
+    background: #5b1c26;
+    color: #ff6878;
+}
+
+.rank-moderator {
+    background: #173c67;
+    color: #62b0ff;
+}
+
+.rank-helper {
+    background: #164d32;
+    color: #61db96;
+}
+
+.rank-vip {
+    background: #514a12;
+    color: #f3df4e;
+}
+
+.rank-og {
+    background: #5c3212;
+    color: #ff9d4d;
+}
+
+.rank-member {
+    background: #30313d;
+    color: #e4e4ea;
+}
+
 
 /* ============================================================
    MESSAGE BAR

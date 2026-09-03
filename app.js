@@ -38,6 +38,49 @@ let currentUser = {
     role: "Member"
 };
 
+const rankDefinitions = {
+    Owner: {
+        icon: "👑",
+        className: "rank-owner",
+        permissions: ["manage_community", "manage_website"]
+    },
+    Developer: {
+        icon: "🛠️",
+        className: "rank-developer",
+        permissions: ["manage_website"]
+    },
+    Admin: {
+        icon: "🔴",
+        className: "rank-admin",
+        permissions: ["manage_community"]
+    },
+    Moderator: {
+        icon: "🔵",
+        className: "rank-moderator",
+        permissions: ["manage_reports", "enforce_rules"]
+    },
+    Helper: {
+        icon: "🟢",
+        className: "rank-helper",
+        permissions: ["help_users"]
+    },
+    VIP: {
+        icon: "⭐",
+        className: "rank-vip",
+        permissions: []
+    },
+    OG: {
+        icon: "🌟",
+        className: "rank-og",
+        permissions: []
+    },
+    Member: {
+        icon: "⚪",
+        className: "rank-member",
+        permissions: []
+    }
+};
+
 
 // ============================================================
 // HELPER
@@ -45,6 +88,42 @@ let currentUser = {
 
 function get(id) {
     return document.getElementById(id);
+}
+
+
+function getRankDefinition(role) {
+    return rankDefinitions[role] || rankDefinitions.Member;
+}
+
+
+function getEffectiveRole(profile) {
+    if (profile && (profile.username || "").toLowerCase() === "madhatter") {
+        return "Owner";
+    }
+
+    return profile.role || "Member";
+}
+
+
+function hasPermission(permission) {
+    return getRankDefinition(currentUser.role).permissions.includes(permission);
+}
+
+
+function applyRank(element, role) {
+    if (!element) {
+        return;
+    }
+
+    const rank = getRankDefinition(role);
+    element.className = element.className
+        .split(" ")
+        .filter(function (className) {
+            return !className.startsWith("rank-");
+        })
+        .concat(rank.className)
+        .join(" ");
+    element.textContent = rank.icon + " " + (role || "Member");
 }
 
 
@@ -227,7 +306,7 @@ async function login() {
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
             avatarUrl: profile.avatar_url || "",
-            role: profile.role || "Member"
+            role: getEffectiveRole(profile)
         };
 
         if (!currentUser.avatarUrl) {
@@ -534,7 +613,7 @@ function updateUser() {
     }
 
     if (get("profileRole")) {
-        get("profileRole").textContent = currentUser.role || "Member";
+        applyRank(get("profileRole"), currentUser.role);
     }
 
 
@@ -646,7 +725,7 @@ function openUserProfile(user) {
 
     if (modal) {
         get("profileName").textContent = name;
-        get("profileRole").textContent = user.role || "Member";
+        applyRank(get("profileRole"), user.role);
         get("profileBio").textContent = user.bio || "No bio yet.";
         updateAvatar(get("profileAvatar"), name, user.avatarUrl);
         get("editProfileButton").classList.toggle(
@@ -1020,17 +1099,6 @@ async function saveProfile() {
 let currentRoom = "general";
 let messageLoadVersion = 0;
 
-function getRoleLabel(role) {
-    const roleIcons = {
-        Owner: "👑",
-        Admin: "🛡️",
-        Moderator: "🔨",
-        Member: ""
-    };
-    const icon = roleIcons[role] || "";
-    return icon ? icon + " " + role : role || "Member";
-}
-
 function formatMessageTime(timestamp) {
     if (!timestamp) {
         return "";
@@ -1054,7 +1122,7 @@ function renderMessage(message, profile) {
     const messages = get("messages");
     const user = profile || {};
     const name = user.username || user.display_name || "User";
-    const role = user.role || "Member";
+    const role = getEffectiveRole(user);
     const avatarUrl = user.avatar_url || "";
     const messageElement = document.createElement("article");
     messageElement.className = "message";
@@ -1078,7 +1146,7 @@ function renderMessage(message, profile) {
 
     const roleElement = document.createElement("span");
     roleElement.className = "role";
-    roleElement.textContent = getRoleLabel(role);
+    applyRank(roleElement, role);
 
     const timestamp = document.createElement("time");
     timestamp.className = "message-timestamp";
@@ -1556,7 +1624,7 @@ async function checkSession() {
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
             avatarUrl: profile.avatar_url || "",
-            role: profile.role || "Member"
+            role: getEffectiveRole(profile)
         };
 
 
