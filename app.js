@@ -612,6 +612,10 @@ function updateUser() {
         get("profileName").textContent = name;
     }
 
+    if (get("profileUsername")) {
+        get("profileUsername").textContent = "@" + (currentUser.username || "user");
+    }
+
     if (get("profileRole")) {
         applyRank(get("profileRole"), currentUser.role);
     }
@@ -725,6 +729,7 @@ function openUserProfile(user) {
 
     if (modal) {
         get("profileName").textContent = name;
+        get("profileUsername").textContent = "@" + (user.username || "user");
         applyRank(get("profileRole"), user.role);
         get("profileBio").textContent = user.bio || "No bio yet.";
         updateAvatar(get("profileAvatar"), name, user.avatarUrl);
@@ -749,6 +754,9 @@ function closeProfile() {
 
 
 function openEditProfile() {
+
+    get("editUsername").value =
+        currentUser.username || "";
 
     get("editName").value =
         currentUser.displayName || "";
@@ -1121,7 +1129,9 @@ function showMessageStatus(text) {
 function renderMessage(message, profile) {
     const messages = get("messages");
     const user = profile || {};
-    const name = user.username || user.display_name || "User";
+    const usernameValue = user.username || "user";
+    const displayName = user.display_name || usernameValue;
+    const name = displayName;
     const role = getEffectiveRole(user);
     const avatarUrl = user.avatar_url || "";
     const messageElement = document.createElement("article");
@@ -1139,10 +1149,14 @@ function renderMessage(message, profile) {
     const header = document.createElement("div");
     header.className = "message-header";
 
+    const displayNameElement = document.createElement("strong");
+    displayNameElement.className = "message-display-name";
+    displayNameElement.textContent = displayName;
+
     const username = document.createElement("button");
     username.type = "button";
     username.className = "message-username";
-    username.textContent = name;
+    username.textContent = "@" + usernameValue;
 
     const roleElement = document.createElement("span");
     roleElement.className = "role";
@@ -1155,6 +1169,7 @@ function renderMessage(message, profile) {
 
     const textElement = document.createElement("p");
     textElement.textContent = message.content;
+    header.appendChild(displayNameElement);
     header.appendChild(username);
     header.appendChild(roleElement);
     header.appendChild(timestamp);
@@ -1167,8 +1182,8 @@ function renderMessage(message, profile) {
     const openProfile = function () {
         openUserProfile({
             id: user.id || message.user_id,
-            username: user.username || "",
-            displayName: user.display_name || name,
+            username: usernameValue,
+            displayName: displayName,
             bio: user.bio || "No bio yet.",
             role: role,
             avatarUrl: avatarUrl

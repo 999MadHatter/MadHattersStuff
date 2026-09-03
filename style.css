@@ -648,6 +648,12 @@ button {
     font-weight: 900;
 }
 
+.message-display-name {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 900;
+}
+
 .message-username:hover {
     text-decoration: underline;
 }
@@ -1003,6 +1009,13 @@ button {
     text-align: center;
 }
 
+.profile-username {
+    margin: 7px 0 0;
+    color: #aaa8b3;
+    font-size: 13px;
+    text-align: center;
+}
+
 
 /* Profile bio */
 
@@ -1087,6 +1100,12 @@ button {
 #editProfileModal input:focus,
 #editProfileModal textarea:focus {
     border-color: #ffffff;
+}
+
+#editProfileModal input[readonly] {
+    background: #191a22;
+    color: #aaa8b3;
+    cursor: not-allowed;
 }
 
 #saveProfileButton {
