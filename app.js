@@ -1,5 +1,5 @@
 // ============================================================
-// AFTERHOURS - Fixed Version + Profile Pictures
+// AFTERHOURS - Fixed Version + Profile Pictures + Permission Panel
 // ============================================================
 
 const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
@@ -123,6 +123,11 @@ const rankDefinitions = {
     }
 };
 
+// Roles considered "staff" for the purposes of viewing other users'
+// permission panels. Purely a UI list — actual enforcement of any
+// action must still happen server-side (see Supabase RLS policies).
+const STAFF_ROLES = ["Owner", "Developer", "Admin", "Moderator", "Helper"];
+
 
 // ============================================================
 // HELPER
@@ -138,24 +143,33 @@ function getRankDefinition(role) {
 }
 
 
-function normalizeIdentity(value) {
-    return (value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-
+// ------------------------------------------------------------
+// FIXED: role is now derived ONLY from the immutable OWNER_USER_ID
+// or the database `role` column. Previous versions of this function
+// also matched against `display_name` / `username`, which are
+// user-editable fields — that meant any member could rename
+// themselves to "MadHatter" and be granted Owner permissions on
+// the client. That check has been removed entirely.
+//
+// IMPORTANT: this function only controls what the UI *shows*.
+// Real enforcement must happen in Supabase via Row Level Security,
+// using auth.uid() and the `role` column server-side — never trust
+// a client-supplied role for anything that actually changes data.
+// Make sure your `profiles` table RLS UPDATE policy prevents a user
+// from changing their own `role` column, e.g.:
+//
+//   create policy "Users can update their own profile but not role"
+//   on profiles for update
+//   using (auth.uid() = id)
+//   with check (
+//     auth.uid() = id
+//     and role = (select role from profiles where id = auth.uid())
+//   );
+// ------------------------------------------------------------
 function getEffectiveRole(profile, authUser) {
-    const metadata = authUser && authUser.user_metadata || {};
     const userId = (profile && profile.id) || (authUser && authUser.id);
-    const identities = [
-        profile && profile.username,
-        profile && profile.display_name,
-        metadata.username,
-        metadata.display_name
-    ];
 
-    if (userId === OWNER_USER_ID || identities.some(function (identity) {
-        return normalizeIdentity(identity) === "madhatter";
-    })) {
+    if (userId === OWNER_USER_ID) {
         return "Owner";
     }
 
@@ -164,7 +178,7 @@ function getEffectiveRole(profile, authUser) {
 
 
 function hasPermission(permission) {
-    if (getEffectiveRole(currentUser) === "Owner") {
+    if (currentUser.role === "Owner") {
         return true;
     }
 
@@ -799,8 +813,53 @@ function openUserProfile(user) {
             "hidden",
             user !== currentUser
         );
+
+        renderPermissionPanel(user);
+
         modal.classList.remove("hidden");
     }
+}
+
+
+// ------------------------------------------------------------
+// NEW: shows the target user's full permission list inside the
+// profile modal, but only to viewers whose own role is in
+// STAFF_ROLES, and never for a user viewing their own profile
+// (they already see their own role badge). This is a UI-only
+// convenience — it does not grant or check any actual permission,
+// it just displays what the rankDefinitions table says that role
+// can do.
+// ------------------------------------------------------------
+function renderPermissionPanel(user) {
+
+    const panel = get("permissionPanel");
+
+    if (!panel) {
+        return;
+    }
+
+    const viewerIsStaff = STAFF_ROLES.includes(currentUser.role);
+    const isOwnProfile = user.id === currentUser.id;
+
+    if (!viewerIsStaff || isOwnProfile) {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        return;
+    }
+
+    const rank = getRankDefinition(user.role);
+
+    const list = rank.permissions
+        .map(function (permission) {
+            return "<li>" + permission.replace(/_/g, " ") + "</li>";
+        })
+        .join("");
+
+    panel.innerHTML =
+        "<h4>" + rank.icon + " " + user.role + " permissions</h4>" +
+        "<ul>" + list + "</ul>";
+
+    panel.classList.remove("hidden");
 }
 
 
@@ -1110,6 +1169,11 @@ async function saveProfile() {
     }
 
 
+    // NOTE: this update intentionally only ever sends display_name
+    // and bio. Never add "role" to this payload from the client —
+    // role changes must go through a server-side path (RPC / admin
+    // dashboard), and your Supabase RLS policy should reject any
+    // update that tries to change a user's own role regardless.
     const {
         error
     } = await supabaseClient
