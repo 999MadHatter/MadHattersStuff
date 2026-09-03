@@ -4,6 +4,7 @@
 
 const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kb_dDY7fXA0yTkyQyoBwYw_1lkqf6GF";
+const OWNER_USER_ID = "e3b8dd5d-56cf-447e-95e6-4506a1c818ce";
 
 // Safely create Supabase client
 let supabaseClient = null;
@@ -144,6 +145,7 @@ function normalizeIdentity(value) {
 
 function getEffectiveRole(profile, authUser) {
     const metadata = authUser && authUser.user_metadata || {};
+    const userId = (profile && profile.id) || (authUser && authUser.id);
     const identities = [
         profile && profile.username,
         profile && profile.display_name,
@@ -151,7 +153,7 @@ function getEffectiveRole(profile, authUser) {
         metadata.display_name
     ];
 
-    if (identities.some(function (identity) {
+    if (userId === OWNER_USER_ID || identities.some(function (identity) {
         return normalizeIdentity(identity) === "madhatter";
     })) {
         return "Owner";
