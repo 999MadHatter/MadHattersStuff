@@ -96,12 +96,27 @@ function getRankDefinition(role) {
 }
 
 
-function getEffectiveRole(profile) {
-    if (profile && (profile.username || "").toLowerCase() === "madhatter") {
+function normalizeIdentity(value) {
+    return (value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+
+function getEffectiveRole(profile, authUser) {
+    const metadata = authUser && authUser.user_metadata || {};
+    const identities = [
+        profile && profile.username,
+        profile && profile.display_name,
+        metadata.username,
+        metadata.display_name
+    ];
+
+    if (identities.some(function (identity) {
+        return normalizeIdentity(identity) === "madhatter";
+    })) {
         return "Owner";
     }
 
-    return profile.role || "Member";
+    return (profile && profile.role) || "Member";
 }
 
 
@@ -306,7 +321,7 @@ async function login() {
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
             avatarUrl: profile.avatar_url || "",
-            role: getEffectiveRole(profile)
+            role: getEffectiveRole(profile, user)
         };
 
         if (!currentUser.avatarUrl) {
@@ -1639,7 +1654,7 @@ async function checkSession() {
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
             avatarUrl: profile.avatar_url || "",
-            role: getEffectiveRole(profile)
+            role: getEffectiveRole(profile, user)
         };
 
 
