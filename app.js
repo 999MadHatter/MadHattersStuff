@@ -42,42 +42,83 @@ const rankDefinitions = {
     Owner: {
         icon: "👑",
         className: "rank-owner",
-        permissions: ["manage_community", "manage_website"]
+        permissions: [
+            "promote_users",
+            "demote_users",
+            "set_ranks",
+            "create_rooms",
+            "delete_rooms",
+            "edit_any_room",
+            "manage_room_permissions",
+            "manage_staff",
+            "ban_users",
+            "unban_users",
+            "mute_users",
+            "unmute_users",
+            "delete_any_message",
+            "handle_serious_reports",
+            "manage_site_settings"
+        ]
     },
     Developer: {
         icon: "🛠️",
         className: "rank-developer",
-        permissions: ["manage_website"]
+        permissions: ["manage_site_settings"]
     },
     Admin: {
         icon: "🔴",
         className: "rank-admin",
-        permissions: ["manage_community"]
+        permissions: [
+            "manage_staff",
+            "create_rooms",
+            "delete_rooms",
+            "edit_any_room",
+            "manage_room_permissions",
+            "ban_users",
+            "unban_users",
+            "mute_users",
+            "unmute_users",
+            "delete_any_message",
+            "handle_serious_reports"
+        ]
     },
     Moderator: {
         icon: "🔵",
         className: "rank-moderator",
-        permissions: ["manage_reports", "enforce_rules"]
+        permissions: [
+            "delete_messages",
+            "mute_users",
+            "temporary_ban_users",
+            "handle_reports",
+            "manage_conversations",
+            "manage_rooms"
+        ]
     },
     Helper: {
         icon: "🟢",
         className: "rank-helper",
-        permissions: ["help_users"]
+        permissions: ["help_users", "answer_questions", "report_problems"]
     },
     VIP: {
         icon: "⭐",
         className: "rank-vip",
-        permissions: []
+        permissions: ["vip_badge", "vip_name_color", "premium_profile_perks", "create_premium_rooms"]
     },
     OG: {
         icon: "🌟",
         className: "rank-og",
-        permissions: []
+        permissions: ["og_badge", "og_name_color", "early_member_perks"]
     },
     Member: {
         icon: "⚪",
         className: "rank-member",
-        permissions: []
+        permissions: [
+            "chat",
+            "manage_own_profile",
+            "upload_profile_picture",
+            "join_rooms",
+            "send_messages"
+        ]
     }
 };
 
@@ -121,6 +162,10 @@ function getEffectiveRole(profile, authUser) {
 
 
 function hasPermission(permission) {
+    if (getEffectiveRole(currentUser) === "Owner") {
+        return true;
+    }
+
     return getRankDefinition(currentUser.role).permissions.includes(permission);
 }
 
