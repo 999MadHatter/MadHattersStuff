@@ -134,6 +134,7 @@ function showChat() {
 
     updateUser();
     updateOnlineUsers();
+    loadMessages();
 }
 
 
@@ -1016,141 +1017,209 @@ async function saveProfile() {
 // MESSAGES
 // ============================================================
 
-function sendMessage() {
+let currentRoom = "general";
+let messageLoadVersion = 0;
 
-    const input =
-        get("messageInput");
+function getRoleLabel(role) {
+    const roleIcons = {
+        Owner: "👑",
+        Admin: "🛡️",
+        Moderator: "🔨",
+        Member: ""
+    };
+    const icon = roleIcons[role] || "";
+    return icon ? icon + " " + role : role || "Member";
+}
 
-
-    const messages =
-        get("messages");
-
-
-    const text =
-        input.value.trim();
-
-
-    if (!text) {
-        return;
+function formatMessageTime(timestamp) {
+    if (!timestamp) {
+        return "";
     }
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+    }).format(new Date(timestamp));
+}
 
+function showMessageStatus(text) {
+    const messages = get("messages");
+    messages.innerHTML = "";
+    const status = document.createElement("p");
+    status.className = "message-status";
+    status.textContent = text;
+    messages.appendChild(status);
+}
 
-    const welcome =
-        messages.querySelector(
-            ".welcome-message"
-        );
+function renderMessage(message, profile) {
+    const messages = get("messages");
+    const user = profile || {};
+    const name = user.username || user.display_name || "User";
+    const role = user.role || "Member";
+    const avatarUrl = user.avatar_url || "";
+    const messageElement = document.createElement("article");
+    messageElement.className = "message";
 
-
-    if (welcome) {
-        welcome.remove();
-    }
-
-
-    const name =
-        currentUser.displayName ||
-        currentUser.username ||
-        "User";
-
-
-    const message =
-        document.createElement("div");
-
-    message.className =
-        "message";
-
-
-    const avatar =
-        document.createElement("div");
-
-    avatar.className =
-        "avatar";
-
-
-    updateAvatar(
-        avatar,
-        name,
-        currentUser.avatarUrl
-    );
-
-
-    const content =
-        document.createElement("div");
-
-
-    const username =
-        document.createElement("strong");
-
-    username.textContent =
-        name;
-
-
-    const role =
-        document.createElement("span");
-
-    role.className =
-        "role";
-
-    role.textContent =
-        currentUser.role;
-
-
-    const textElement =
-        document.createElement("p");
-
-    textElement.textContent =
-        text;
-
-
-    content.appendChild(
-        username
-    );
-
-    content.appendChild(
-        role
-    );
-
-    content.appendChild(
-        textElement
-    );
-
-
-    message.appendChild(
-        avatar
-    );
-
-    message.appendChild(
-        content
-    );
-
-
-    messages.appendChild(
-        message
-    );
-
-    avatar.classList.add("clickable-profile");
+    const avatar = document.createElement("div");
+    avatar.className = "avatar clickable-profile";
     avatar.tabIndex = 0;
     avatar.setAttribute("role", "button");
     avatar.setAttribute("aria-label", "Open " + name + " profile");
-    avatar.addEventListener("click", function () {
+    updateAvatar(avatar, name, avatarUrl);
+
+    const content = document.createElement("div");
+    content.className = "message-content";
+    const header = document.createElement("div");
+    header.className = "message-header";
+
+    const username = document.createElement("button");
+    username.type = "button";
+    username.className = "message-username";
+    username.textContent = name;
+
+    const roleElement = document.createElement("span");
+    roleElement.className = "role";
+    roleElement.textContent = getRoleLabel(role);
+
+    const timestamp = document.createElement("time");
+    timestamp.className = "message-timestamp";
+    timestamp.dateTime = message.created_at || "";
+    timestamp.textContent = formatMessageTime(message.created_at);
+
+    const textElement = document.createElement("p");
+    textElement.textContent = message.content;
+    header.appendChild(username);
+    header.appendChild(roleElement);
+    header.appendChild(timestamp);
+    content.appendChild(header);
+    content.appendChild(textElement);
+    messageElement.appendChild(avatar);
+    messageElement.appendChild(content);
+    messages.appendChild(messageElement);
+
+    const openProfile = function () {
         openUserProfile({
-            displayName: name,
-            bio: "No bio yet.",
-            role: currentUser.role,
-            avatarUrl: currentUser.avatarUrl
+            id: user.id || message.user_id,
+            username: user.username || "",
+            displayName: user.display_name || name,
+            bio: user.bio || "No bio yet.",
+            role: role,
+            avatarUrl: avatarUrl
         });
-    });
+    };
+    avatar.addEventListener("click", openProfile);
+    username.addEventListener("click", openProfile);
     avatar.addEventListener("keydown", function (event) {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            avatar.click();
+            openProfile();
         }
     });
+}
 
+async function loadMessages() {
+    const loadVersion = ++messageLoadVersion;
+    if (!supabaseClient || !currentUser.id) {
+        showMessageStatus("Messages are unavailable right now.");
+        return;
+    }
+    showMessageStatus("Loading messages...");
+
+    const { data: messages, error } = await supabaseClient
+        .from("messages")
+        .select("id, user_id, room, content, created_at")
+        .eq("room", currentRoom)
+        .order("created_at", { ascending: true });
+
+    if (loadVersion !== messageLoadVersion) {
+        return;
+    }
+    if (error) {
+        console.error(error);
+        showMessageStatus("Unable to load messages.");
+        return;
+    }
+
+    const userIds = [...new Set((messages || []).map(function (message) {
+        return message.user_id;
+    }).filter(Boolean))];
+    let profiles = [];
+    if (userIds.length) {
+        const { data, error: profileError } = await supabaseClient
+            .from("profiles")
+            .select("id, username, display_name, bio, avatar_url, role")
+            .in("id", userIds);
+        if (profileError) {
+            console.error(profileError);
+        } else {
+            profiles = data || [];
+        }
+    }
+
+    if (loadVersion !== messageLoadVersion) {
+        return;
+    }
+    const profilesById = new Map(profiles.map(function (profile) {
+        return [profile.id, profile];
+    }));
+    const container = get("messages");
+    container.innerHTML = "";
+
+    if (!messages || !messages.length) {
+        container.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-icon">${rooms[currentRoom].title.substring(0, 2)}</div>
+                <h3>Welcome to ${rooms[currentRoom].title.substring(2)}</h3>
+                <p>Send the first message.</p>
+            </div>
+        `;
+        return;
+    }
+    messages.forEach(function (message) {
+        renderMessage(message, profilesById.get(message.user_id));
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage() {
+    const input = get("messageInput");
+    const messages = get("messages");
+    const text = input.value.trim();
+
+    if (!text || !supabaseClient || !currentUser.id) {
+        return;
+    }
+
+    const button = get("messageForm").querySelector("button");
+    button.disabled = true;
+
+    const { data: message, error } = await supabaseClient
+        .from("messages")
+        .insert({
+            user_id: currentUser.id,
+            room: currentRoom,
+            content: text
+        })
+        .select("id, user_id, room, content, created_at")
+        .single();
+
+    button.disabled = false;
+
+    if (error) {
+        console.error(error);
+        alert("Unable to send your message.");
+        return;
+    }
 
     input.value = "";
-
-    messages.scrollTop =
-        messages.scrollHeight;
+    renderMessage(message, {
+        id: currentUser.id,
+        username: currentUser.username,
+        display_name: currentUser.displayName,
+        bio: currentUser.bio,
+        avatar_url: currentUser.avatarUrl,
+        role: currentUser.role
+    });
+    messages.scrollTop = messages.scrollHeight;
 }
 
 
@@ -1191,6 +1260,8 @@ function changeRoom(
         return;
     }
 
+    currentRoom = roomName;
+
 
     document
         .querySelectorAll(".room")
@@ -1224,13 +1295,7 @@ function changeRoom(
         "...";
 
 
-    get("messages").innerHTML = `
-        <div class="welcome-message">
-            <div class="welcome-icon">${room.title.substring(0, 2)}</div>
-            <h3>Welcome to ${room.title.substring(2)}</h3>
-            <p>Send the first message.</p>
-        </div>
-    `;
+    loadMessages();
 }
 
 

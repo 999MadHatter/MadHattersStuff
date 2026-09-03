@@ -627,6 +627,43 @@ button {
     font-weight: 900;
 }
 
+.message-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.message-username {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.message-username:hover {
+    text-decoration: underline;
+}
+
+.message-timestamp {
+    color: #aaa8b3;
+    font-size: 11px;
+}
+
+.message-status {
+    margin: 0;
+    color: #bdbbc5;
+    font-size: 14px;
+    text-align: center;
+}
+
 .message p {
     margin: 7px 0 0;
 
