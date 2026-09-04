@@ -1136,8 +1136,6 @@ function renderPermissionPanel(user) {
     allowedActions.forEach(
         function (action) {
 
-            // Change Role has its own selector below.
-            // Don't create a duplicate button here.
             if (action.id === "change_role") {
                 return;
             }
@@ -1181,6 +1179,7 @@ function renderPermissionPanel(user) {
     panel.appendChild(
         actionsContainer
     );
+
 
     // --------------------------------------------------------
     // CHANGE ROLE
@@ -2225,9 +2224,6 @@ async function uploadProfilePicture(file) {
         currentUser.avatarUrl =
             avatarUrl;
 
-        // Keep a local copy too so the avatar can still
-        // be restored if the profile request temporarily
-        // fails or the storage URL becomes unavailable.
         try {
 
             localStorage.setItem(
@@ -2254,8 +2250,6 @@ async function uploadProfilePicture(file) {
             currentUser.avatarUrl
         );
 
-        // Refresh existing chat messages so the updated
-        // avatar appears immediately.
         loadMessages();
 
         if (status) {
@@ -2390,14 +2384,107 @@ let messageRealtimeRoom = null;
 
 
 // ------------------------------------------------------------
+// Realtime status indicator
+// ------------------------------------------------------------
+
+function updateRealtimeStatus(status) {
+
+    let indicator =
+        get("realtimeStatus");
+
+    // Create the indicator automatically so index.html
+    // does not need to be changed.
+    if (!indicator) {
+
+        indicator =
+            document.createElement("div");
+
+        indicator.id =
+            "realtimeStatus";
+
+        indicator.style.position = "fixed";
+        indicator.style.bottom = "15px";
+        indicator.style.right = "15px";
+        indicator.style.zIndex = "9999";
+        indicator.style.padding = "8px 12px";
+        indicator.style.borderRadius = "8px";
+        indicator.style.background = "rgba(0, 0, 0, 0.8)";
+        indicator.style.color = "white";
+        indicator.style.fontSize = "13px";
+        indicator.style.fontFamily = "Arial, sans-serif";
+        indicator.style.pointerEvents = "none";
+        indicator.style.boxShadow =
+            "0 4px 12px rgba(0,0,0,0.25)";
+
+        document.body.appendChild(
+            indicator
+        );
+    }
+
+    if (status === "SUBSCRIBED") {
+
+        indicator.textContent =
+            "🟢 Realtime Connected";
+
+        indicator.title =
+            "Afterhours realtime is connected.";
+
+    } else if (
+        status === "CHANNEL_ERROR"
+    ) {
+
+        indicator.textContent =
+            "🔴 Realtime Error";
+
+        indicator.title =
+            "Supabase realtime encountered an error.";
+
+    } else if (
+        status === "TIMED_OUT"
+    ) {
+
+        indicator.textContent =
+            "🟠 Realtime Timed Out";
+
+        indicator.title =
+            "Supabase realtime connection timed out.";
+
+    } else if (
+        status === "CLOSED"
+    ) {
+
+        indicator.textContent =
+            "🔴 Realtime Disconnected";
+
+        indicator.title =
+            "The realtime connection was closed.";
+
+    } else {
+
+        indicator.textContent =
+            "🟡 Realtime Connecting...";
+
+        indicator.title =
+            "Connecting to Afterhours realtime.";
+    }
+}
+
+
+// ------------------------------------------------------------
 // Subscribe to new messages for the current room.
 // ------------------------------------------------------------
+
 async function subscribeToRoomMessages() {
 
     if (
         !supabaseClient ||
         !currentUser.id
     ) {
+
+        updateRealtimeStatus(
+            "CLOSED"
+        );
+
         return;
     }
 
@@ -2406,6 +2493,7 @@ async function subscribeToRoomMessages() {
         messageRealtimeChannel &&
         messageRealtimeRoom === currentRoom
     ) {
+
         return;
     }
 
@@ -2424,7 +2512,6 @@ async function subscribeToRoomMessages() {
                 "Unable to remove previous realtime channel:",
                 err
             );
-
         }
 
         messageRealtimeChannel = null;
@@ -2433,6 +2520,10 @@ async function subscribeToRoomMessages() {
 
     const roomAtSubscription =
         currentRoom;
+
+    updateRealtimeStatus(
+        "CONNECTING"
+    );
 
     const channelName =
         "afterhours-messages-" +
@@ -2455,8 +2546,6 @@ async function subscribeToRoomMessages() {
                 },
                 async function (payload) {
 
-                    // The user may have switched rooms
-                    // since this listener was created.
                     if (
                         currentRoom !==
                         roomAtSubscription
@@ -2514,9 +2603,8 @@ async function subscribeToRoomMessages() {
                         }
                     }
 
-                    // If the sender is the current user and
-                    // profile lookup didn't return anything,
-                    // use the local current-user data.
+                    // If sender is the current user and
+                    // profile lookup failed, use local data.
                     if (
                         !profile &&
                         message.user_id ===
@@ -2545,9 +2633,6 @@ async function subscribeToRoomMessages() {
                         };
                     }
 
-                    // If the room changed while the profile
-                    // was loading, don't append this message
-                    // to the wrong room.
                     if (
                         currentRoom !==
                         roomAtSubscription
@@ -2580,11 +2665,15 @@ async function subscribeToRoomMessages() {
                         roomAtSubscription
                     );
 
+                    updateRealtimeStatus(
+                        status
+                    );
+
                     if (
                         status === "SUBSCRIBED"
                     ) {
 
-                        // Only mark this room as active if
+                        // Only mark this room active if
                         // this is still the current channel.
                         if (
                             messageRealtimeChannel
@@ -2614,7 +2703,12 @@ async function subscribeToRoomMessages() {
 // ------------------------------------------------------------
 // Stop the current realtime listener.
 // ------------------------------------------------------------
+
 async function stopRoomMessageRealtime() {
+
+    updateRealtimeStatus(
+        "CLOSED"
+    );
 
     if (
         !supabaseClient ||
@@ -2720,9 +2814,6 @@ function renderMessage(message, profile) {
     let avatarUrl =
         user.avatar_url || "";
 
-    // If this message belongs to the current user and
-    // the database profile doesn't contain an avatar,
-    // use the locally stored avatar as a fallback.
     if (
         !avatarUrl &&
         user.id === currentUser.id
@@ -2743,8 +2834,6 @@ function renderMessage(message, profile) {
     messageElement.className =
         "message";
 
-    // Store the database message ID on the element.
-    // Realtime uses this to prevent duplicates.
     messageElement.dataset.messageId =
         message.id || "";
 
@@ -3054,9 +3143,6 @@ async function loadMessages() {
             )
         );
 
-    // Make sure the current user's locally saved
-    // avatar is available even if the database avatar
-    // is temporarily missing.
     if (currentUser.id) {
 
         const localAvatar =
@@ -3196,13 +3282,6 @@ async function sendMessage() {
 
     button.disabled = true;
 
-    // --------------------------------------------------------
-    // IMPORTANT:
-    // Messages now go through the secure RPC instead of a
-    // direct INSERT. This prevents muted/banned/restricted/
-    // kicked users from bypassing moderation.
-    // --------------------------------------------------------
-
     const {
         data: message,
         error
@@ -3230,9 +3309,6 @@ async function sendMessage() {
             "Unable to send your message."
         );
 
-        // Refresh moderation status in case
-        // the server rejected the message because
-        // a moderation action just became active.
         await checkModerationStatus();
 
         return;
@@ -3240,9 +3316,9 @@ async function sendMessage() {
 
     input.value = "";
 
-    // Render the message immediately for the sender.
-    // The realtime listener will see the same message,
-    // but renderMessage() prevents it from being duplicated.
+    // Render immediately for the sender.
+    // Realtime will not duplicate it because renderMessage()
+    // checks the database message ID.
     renderMessage(
         message,
         {
@@ -3337,7 +3413,7 @@ function changeRoom(
 
     updateMessageInputState();
 
-    // Switch the realtime listener to the new room.
+    // Switch realtime listener to the new room.
     subscribeToRoomMessages();
 
     loadMessages();
@@ -3588,12 +3664,6 @@ async function checkSession() {
 
             return;
         }
-
-        // ----------------------------------------------------
-        // FIX:
-        // Restore the local avatar if the Supabase profile
-        // doesn't currently have an avatar URL.
-        // ----------------------------------------------------
 
         const localAvatar =
             localStorage.getItem(
