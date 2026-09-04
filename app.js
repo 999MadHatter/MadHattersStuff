@@ -1327,9 +1327,7 @@ function renderPermissionPanel(user) {
                         option.selected = true;
                     }
 
-                    roleSelect.appendChild(
-                        option
-                    );
+                    roleSelect.appendChild(option);
                 }
             );
 
@@ -2311,6 +2309,11 @@ async function uploadProfilePicture(file) {
             "." +
             extension;
 
+
+        // ----------------------------------------------------
+        // UPLOAD TO SUPABASE STORAGE
+        // ----------------------------------------------------
+
         const {
             error: uploadError
         } = await supabaseClient.storage
@@ -2330,17 +2333,31 @@ async function uploadProfilePicture(file) {
                 }
             );
 
+
         if (uploadError) {
 
-            console.error(uploadError);
-
-            await saveLocalAvatar(
-                file,
-                status
+            console.error(
+                "AVATAR STORAGE ERROR:",
+                uploadError
             );
+
+            if (status) {
+
+                status.textContent =
+                    "Storage error: " +
+                    (
+                        uploadError.message ||
+                        "Unable to upload the picture."
+                    );
+            }
 
             return;
         }
+
+
+        // ----------------------------------------------------
+        // GET PUBLIC URL
+        // ----------------------------------------------------
 
         const {
             data: publicData
@@ -2348,10 +2365,36 @@ async function uploadProfilePicture(file) {
             .from("avatars")
             .getPublicUrl(filePath);
 
+
+        if (
+            !publicData ||
+            !publicData.publicUrl
+        ) {
+
+            console.error(
+                "Unable to create public avatar URL."
+            );
+
+            if (status) {
+
+                status.textContent =
+                    "Upload worked, but the image URL could not be created.";
+            }
+
+            return;
+        }
+
+
         const avatarUrl =
             publicData.publicUrl;
 
+
+        // ----------------------------------------------------
+        // SAVE URL TO PROFILE
+        // ----------------------------------------------------
+
         const {
+            data: updatedProfile,
             error: profileError
         } = await supabaseClient
             .from("profiles")
@@ -2362,29 +2405,72 @@ async function uploadProfilePicture(file) {
             .eq(
                 "id",
                 currentUser.id
-            );
+            )
+            .select(
+                "id, avatar_url"
+            )
+            .maybeSingle();
+
 
         if (profileError) {
 
-            console.error(profileError);
-
-            await saveLocalAvatar(
-                file,
-                status
+            console.error(
+                "AVATAR PROFILE ERROR:",
+                profileError
             );
+
+            if (status) {
+
+                status.textContent =
+                    "Profile save error: " +
+                    (
+                        profileError.message ||
+                        "Unable to save your profile picture."
+                    );
+            }
 
             return;
         }
 
+
+        // ----------------------------------------------------
+        // VERIFY DATABASE UPDATE
+        // ----------------------------------------------------
+
+        if (
+            !updatedProfile ||
+            !updatedProfile.avatar_url
+        ) {
+
+            console.error(
+                "Avatar URL was not saved to profiles:",
+                updatedProfile
+            );
+
+            if (status) {
+
+                status.textContent =
+                    "The upload worked, but avatar_url was not saved.";
+            }
+
+            return;
+        }
+
+
+        // ----------------------------------------------------
+        // SUCCESS
+        // ----------------------------------------------------
+
         currentUser.avatarUrl =
-            avatarUrl;
+            updatedProfile.avatar_url;
+
 
         try {
 
             localStorage.setItem(
                 "afterhours-avatar-" +
                 currentUser.id,
-                avatarUrl
+                updatedProfile.avatar_url
             );
 
         } catch (error) {
@@ -2395,7 +2481,9 @@ async function uploadProfilePicture(file) {
             );
         }
 
+
         updateUser();
+
 
         updateAvatar(
             get("editAvatarPreview"),
@@ -2405,13 +2493,16 @@ async function uploadProfilePicture(file) {
             currentUser.avatarUrl
         );
 
+
         loadMessages();
+
 
         if (status) {
 
             status.textContent =
                 "Profile picture updated!";
         }
+
 
         const input =
             get("avatarFile");
@@ -2422,16 +2513,19 @@ async function uploadProfilePicture(file) {
 
     } catch (err) {
 
-        console.error(err);
-
-        alert(
-            "Something went wrong while uploading your picture."
+        console.error(
+            "AVATAR UPLOAD EXCEPTION:",
+            err
         );
 
         if (status) {
 
             status.textContent =
-                "Upload failed.";
+                "Upload error: " +
+                (
+                    err.message ||
+                    "Something went wrong."
+                );
         }
     }
 }
