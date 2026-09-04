@@ -139,7 +139,7 @@
         </div>
     </main>
 
-     <!-- PROFILE MODAL -->
+    <!-- PROFILE MODAL -->
     <div id="profileModal" class="modal hidden">
         <div class="modal-card">
             <button
@@ -159,7 +159,6 @@
             <p id="profileBio">
                 No bio yet.
             </p>
-            <div id="permissionPanel" class="permission-panel hidden"></div>
             <button
                 id="editProfileButton"
                 type="button"
@@ -168,6 +167,11 @@
                 Edit Profile
             </button>
         </div>
+
+        <!-- Sits beside the modal card, shows the actions the
+             viewer (if staff) can take on this user. Filled in by
+             renderPermissionPanel() in app.js. -->
+        <div id="permissionPanel" class="permission-panel hidden"></div>
     </div>
 
     <!-- EDIT PROFILE MODAL -->
