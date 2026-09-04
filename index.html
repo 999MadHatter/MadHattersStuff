@@ -85,19 +85,58 @@
                     <h2>Afterhours</h2>
                 </div>
 
-                <div class="rooms">
-                    <button type="button" class="room active" data-room="general">💬 General</button>
-                    <button type="button" class="room" data-room="gaming">🎮 Gaming</button>
-                    <button type="button" class="room" data-room="music">🎵 Music</button>
+                <!-- ROOMS VIEW -->
+                <div id="sidebarRoomsView" class="sidebar-view">
+                    <div class="rooms">
+                        <button type="button" class="room active" data-room="general">💬 General</button>
+                        <button type="button" class="room" data-room="gaming">🎮 Gaming</button>
+                        <button type="button" class="room" data-room="music">🎵 Music</button>
+                    </div>
+
+                    <div class="rooms-spacer"></div>
+
+                    <div class="messages-dock">
+                        <button id="messagesButton" type="button" class="messages-button">
+                            <span class="messages-button-icon">✉️</span>
+                            <span class="messages-button-label">Messages</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- DIRECT MESSAGES -->
-                <div class="direct-messages">
-                    <button id="messagesButton" type="button" class="messages-button">
-                        ✉️ Messages
+                <!-- MESSAGES MENU -->
+                <div id="sidebarMessagesView" class="sidebar-view hidden">
+                    <button id="messagesBackButton" type="button" class="inbox-back-button">
+                        ← Back
                     </button>
 
-                    <div id="dmList" class="dm-list hidden"></div>
+                    <button id="newMessageButton" type="button" class="new-message-button">
+                        ＋ New Message
+                    </button>
+
+                    <div class="inbox-section-label">Recent Messages</div>
+                    <div id="dmList" class="dm-list"></div>
+                </div>
+
+                <!-- NEW MESSAGE SEARCH -->
+                <div id="sidebarNewMessageView" class="sidebar-view hidden">
+                    <button id="newMessageBackButton" type="button" class="inbox-back-button">
+                        ← Back
+                    </button>
+
+                    <div class="inbox-title">New Message</div>
+
+                    <div class="user-search-wrap">
+                        <input
+                            id="dmUsername"
+                            type="search"
+                            placeholder="🔍 Search users..."
+                            maxlength="32"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <p id="dmSearchStatus" class="inbox-status"></p>
+                    <div id="userSearchResults" class="user-search-results"></div>
                 </div>
 
                 <div class="sidebar-bottom">
@@ -147,47 +186,6 @@
             </aside>
         </div>
     </main>
-
-    <!-- NEW DM MODAL -->
-    <div id="newDmModal" class="modal hidden">
-        <div class="modal-card">
-            <button
-                id="closeNewDmButton"
-                type="button"
-                class="close-button"
-            >
-                ×
-            </button>
-
-            <h2>New Message</h2>
-            <p>Enter someone's username to start a conversation.</p>
-
-            <label for="dmUsername">
-                Username
-            </label>
-
-            <input
-                id="dmUsername"
-                type="text"
-                placeholder="@username"
-                maxlength="24"
-                autocomplete="off"
-            >
-
-            <p
-                id="dmSearchStatus"
-                class="avatar-upload-status"
-            ></p>
-
-            <button
-                id="startDmButton"
-                type="button"
-                class="primary-button full-button"
-            >
-                Start Conversation
-            </button>
-        </div>
-    </div>
 
     <!-- PROFILE MODAL -->
     <div id="profileModal" class="modal hidden">
