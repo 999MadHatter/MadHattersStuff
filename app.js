@@ -36,7 +36,9 @@ let currentUser = {
     displayName: "",
     bio: "",
     avatarUrl: "",
-    role: "Member"
+    role: "Member",
+    muted: false,
+    restricted: false
 };
 
 const rankDefinitions = {
@@ -64,16 +66,24 @@ const rankDefinitions = {
             "manage_site_settings"
         ]
     },
+
     Developer: {
         icon: "🛠️",
         className: "rank-developer",
-        permissions: ["manage_site_settings"]
+        permissions: [
+            "manage_site_settings",
+            "mute_users",
+            "kick_users",
+            "ban_users"
+        ]
     },
+
     Admin: {
         icon: "🔴",
         className: "rank-admin",
         permissions: [
             "manage_staff",
+            "set_ranks",
             "create_rooms",
             "delete_rooms",
             "edit_any_room",
@@ -89,6 +99,7 @@ const rankDefinitions = {
             "handle_serious_reports"
         ]
     },
+
     Moderator: {
         icon: "🔵",
         className: "rank-moderator",
@@ -103,6 +114,7 @@ const rankDefinitions = {
             "manage_rooms"
         ]
     },
+
     Helper: {
         icon: "🟢",
         className: "rank-helper",
@@ -113,16 +125,28 @@ const rankDefinitions = {
             "warn_users"
         ]
     },
+
     VIP: {
         icon: "⭐",
         className: "rank-vip",
-        permissions: ["vip_badge", "vip_name_color", "premium_profile_perks", "create_premium_rooms"]
+        permissions: [
+            "vip_badge",
+            "vip_name_color",
+            "premium_profile_perks",
+            "create_premium_rooms"
+        ]
     },
+
     OG: {
         icon: "🌟",
         className: "rank-og",
-        permissions: ["og_badge", "og_name_color", "early_member_perks"]
+        permissions: [
+            "og_badge",
+            "og_name_color",
+            "early_member_perks"
+        ]
     },
+
     Member: {
         icon: "⚪",
         className: "rank-member",
@@ -136,10 +160,17 @@ const rankDefinitions = {
     }
 };
 
+
 // Roles considered "staff" for the purposes of viewing other users'
 // action panels. Actual enforcement of any action must still happen
-// server-side (see Supabase RLS policies).
-const STAFF_ROLES = ["Owner", "Developer", "Admin", "Moderator", "Helper"];
+// server-side.
+const STAFF_ROLES = [
+    "Owner",
+    "Developer",
+    "Admin",
+    "Moderator",
+    "Helper"
+];
 
 
 // ============================================================
@@ -158,6 +189,7 @@ const ROLE_LEVELS = {
 };
 
 const MODERATION_ACTIONS = {
+
     Owner: [
         {
             id: "mute",
@@ -244,6 +276,11 @@ const MODERATION_ACTIONS = {
             id: "delete_messages",
             label: "🗑️ Delete Messages",
             permission: "delete_any_message"
+        },
+        {
+            id: "change_role",
+            label: "🛡️ Change Role",
+            permission: "set_ranks"
         }
     ],
 
@@ -262,6 +299,11 @@ const MODERATION_ACTIONS = {
             id: "warn",
             label: "⚠️ Warn",
             permission: "warn_users"
+        },
+        {
+            id: "delete_messages",
+            label: "🗑️ Delete Messages",
+            permission: "delete_messages"
         }
     ],
 
@@ -290,30 +332,14 @@ function getRankDefinition(role) {
 
 
 // ------------------------------------------------------------
-// FIXED: role is now derived ONLY from the immutable OWNER_USER_ID
-// or the database `role` column. Previous versions of this function
-// also matched against `display_name` / `username`, which are
-// user-editable fields — that meant any member could rename
-// themselves to "MadHatter" and be granted Owner permissions on
-// the client. That check has been removed entirely.
-//
-// IMPORTANT: this function only controls what the UI *shows*.
-// Real enforcement must happen in Supabase via Row Level Security,
-// using auth.uid() and the `role` column server-side — never trust
-// a client-supplied role for anything that actually changes data.
-// Make sure your `profiles` table RLS UPDATE policy prevents a user
-// from changing their own `role` column, e.g.:
-//
-//   create policy "Users can update their own profile but not role"
-//   on profiles for update
-//   using (auth.uid() = id)
-//   with check (
-//     auth.uid() = id
-//     and role = (select role from profiles where id = auth.uid())
-//   );
+// role is derived ONLY from the immutable OWNER_USER_ID
+// or the database role column.
 // ------------------------------------------------------------
 function getEffectiveRole(profile, authUser) {
-    const userId = (profile && profile.id) || (authUser && authUser.id);
+
+    const userId =
+        (profile && profile.id) ||
+        (authUser && authUser.id);
 
     if (userId === OWNER_USER_ID) {
         return "Owner";
@@ -324,20 +350,25 @@ function getEffectiveRole(profile, authUser) {
 
 
 function hasPermission(permission) {
+
     if (currentUser.role === "Owner") {
         return true;
     }
 
-    return getRankDefinition(currentUser.role).permissions.includes(permission);
+    return getRankDefinition(currentUser.role)
+        .permissions
+        .includes(permission);
 }
 
 
 function applyRank(element, role) {
+
     if (!element) {
         return;
     }
 
     const rank = getRankDefinition(role);
+
     element.className = element.className
         .split(" ")
         .filter(function (className) {
@@ -345,7 +376,9 @@ function applyRank(element, role) {
         })
         .concat(rank.className)
         .join(" ");
-    element.textContent = rank.icon + " " + (role || "Member");
+
+    element.textContent =
+        rank.icon + " " + (role || "Member");
 }
 
 
@@ -354,6 +387,7 @@ function applyRank(element, role) {
 // ============================================================
 
 function hideAllPages() {
+
     [
         "landingPage",
         "loginPage",
@@ -372,6 +406,7 @@ function hideAllPages() {
 
 
 function showLanding() {
+
     hideAllPages();
 
     const page = get("landingPage");
@@ -383,6 +418,7 @@ function showLanding() {
 
 
 function showLogin() {
+
     hideAllPages();
 
     const page = get("loginPage");
@@ -404,6 +440,7 @@ function showLogin() {
 
 
 function showRegister() {
+
     hideAllPages();
 
     const page = get("registerPage");
@@ -425,6 +462,7 @@ function showRegister() {
 
 
 function showChat() {
+
     hideAllPages();
 
     const page = get("chatPage");
@@ -436,6 +474,7 @@ function showChat() {
     updateUser();
     updateOnlineUsers();
     loadMessages();
+    checkModerationStatus();
 }
 
 
@@ -528,13 +567,18 @@ async function login() {
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
             avatarUrl: profile.avatar_url || "",
-            role: getEffectiveRole(profile, user)
+            role: getEffectiveRole(profile, user),
+            muted: false,
+            restricted: false
         };
 
         if (!currentUser.avatarUrl) {
-            currentUser.avatarUrl = localStorage.getItem(
-                "afterhours-avatar-" + currentUser.id
-            ) || "";
+
+            currentUser.avatarUrl =
+                localStorage.getItem(
+                    "afterhours-avatar-" +
+                    currentUser.id
+                ) || "";
         }
 
         updateUser();
@@ -561,9 +605,11 @@ async function login() {
 async function register() {
 
     if (!supabaseClient) {
+
         alert(
             "Registration is currently unavailable. Please try again later."
         );
+
         return;
     }
 
@@ -607,12 +653,10 @@ async function register() {
         return;
     }
 
-
     const button = get("registerSubmit");
 
     button.disabled = true;
     button.textContent = "Creating account...";
-
 
     try {
 
@@ -625,7 +669,6 @@ async function register() {
             .eq("username", username)
             .maybeSingle();
 
-
         if (checkError) {
 
             console.error(checkError);
@@ -637,7 +680,6 @@ async function register() {
             return;
         }
 
-
         if (existing) {
 
             alert(
@@ -646,7 +688,6 @@ async function register() {
 
             return;
         }
-
 
         const {
             data,
@@ -668,7 +709,6 @@ async function register() {
 
         });
 
-
         if (error) {
 
             console.error(error);
@@ -677,7 +717,6 @@ async function register() {
 
             return;
         }
-
 
         if (!data.user) {
 
@@ -688,18 +727,15 @@ async function register() {
             return;
         }
 
-
         alert(
             "Account created! Check your email and verify your account before logging in."
         );
-
 
         get("registerUsername").value = "";
         get("registerEmail").value = "";
         get("registerPassword").value = "";
 
         showLogin();
-
 
     } catch (err) {
 
@@ -730,7 +766,9 @@ async function logout() {
         displayName: "",
         bio: "",
         avatarUrl: "",
-        role: "Member"
+        role: "Member",
+        muted: false,
+        restricted: false
     };
 
     showLanding();
@@ -776,38 +814,53 @@ function updateAvatar(element, name, avatarUrl) {
 
 
 function saveLocalAvatar(file, status) {
+
     return new Promise(function (resolve, reject) {
+
         const reader = new FileReader();
 
         reader.addEventListener("load", function () {
+
             const avatarUrl = reader.result;
 
             try {
+
                 localStorage.setItem(
-                    "afterhours-avatar-" + currentUser.id,
+                    "afterhours-avatar-" +
+                    currentUser.id,
                     avatarUrl
                 );
+
             } catch (error) {
+
                 reject(error);
+
                 return;
             }
 
             currentUser.avatarUrl = avatarUrl;
+
             updateUser();
+
             updateAvatar(
                 get("editAvatarPreview"),
-                currentUser.displayName || currentUser.username || "User",
+                currentUser.displayName ||
+                currentUser.username ||
+                "User",
                 avatarUrl
             );
 
             if (status) {
-                status.textContent = "Saved on this device.";
+                status.textContent =
+                    "Saved on this device.";
             }
 
             resolve();
+
         });
 
         reader.addEventListener("error", reject);
+
         reader.readAsDataURL(file);
     });
 }
@@ -824,37 +877,38 @@ function updateUser() {
         currentUser.username ||
         "User";
 
-
     if (get("topUsername")) {
         get("topUsername").textContent = name;
     }
-
 
     if (get("profileName")) {
         get("profileName").textContent = name;
     }
 
     if (get("profileUsername")) {
-        get("profileUsername").textContent = "@" + (currentUser.username || "user");
+        get("profileUsername").textContent =
+            "@" +
+            (currentUser.username || "user");
     }
 
     if (get("profileRole")) {
-        applyRank(get("profileRole"), currentUser.role);
+        applyRank(
+            get("profileRole"),
+            currentUser.role
+        );
     }
-
 
     if (get("profileBio")) {
         get("profileBio").textContent =
-            currentUser.bio || "No bio yet.";
+            currentUser.bio ||
+            "No bio yet.";
     }
-
 
     updateAvatar(
         get("profileAvatar"),
         name,
         currentUser.avatarUrl
     );
-
 
     updateAvatar(
         get("sidebarAvatar"),
@@ -875,42 +929,52 @@ function updateOnlineUsers() {
 
     container.innerHTML = "";
 
-
     const user =
         document.createElement("div");
 
     user.className = "online-user";
     user.tabIndex = 0;
     user.setAttribute("role", "button");
-    user.addEventListener("click", openProfile);
-    user.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openProfile();
-        }
-    });
 
+    user.addEventListener(
+        "click",
+        openProfile
+    );
+
+    user.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "Enter" ||
+                event.key === " "
+            ) {
+
+                event.preventDefault();
+
+                openProfile();
+            }
+
+        }
+    );
 
     const dot =
         document.createElement("span");
 
     dot.className = "status-dot";
 
-
     const avatar =
         document.createElement("span");
 
     avatar.className = "avatar";
 
-
     updateAvatar(
         avatar,
         currentUser.displayName ||
-            currentUser.username ||
-            "User",
+        currentUser.username ||
+        "User",
         currentUser.avatarUrl
     );
-
 
     const name =
         document.createElement("span");
@@ -919,7 +983,6 @@ function updateOnlineUsers() {
         currentUser.displayName ||
         currentUser.username ||
         "User";
-
 
     user.appendChild(dot);
     user.appendChild(avatar);
@@ -934,7 +997,6 @@ function updateOnlineUsers() {
 // ============================================================
 
 function openProfile() {
-
     openUserProfile(currentUser);
 }
 
@@ -950,11 +1012,29 @@ function openUserProfile(user) {
         "User";
 
     if (modal) {
-        get("profileName").textContent = name;
-        get("profileUsername").textContent = "@" + (user.username || "user");
-        applyRank(get("profileRole"), user.role);
-        get("profileBio").textContent = user.bio || "No bio yet.";
-        updateAvatar(get("profileAvatar"), name, user.avatarUrl);
+
+        get("profileName").textContent =
+            name;
+
+        get("profileUsername").textContent =
+            "@" +
+            (user.username || "user");
+
+        applyRank(
+            get("profileRole"),
+            user.role
+        );
+
+        get("profileBio").textContent =
+            user.bio ||
+            "No bio yet.";
+
+        updateAvatar(
+            get("profileAvatar"),
+            name,
+            user.avatarUrl
+        );
+
         get("editProfileButton").classList.toggle(
             "hidden",
             user !== currentUser
@@ -967,31 +1047,35 @@ function openUserProfile(user) {
 }
 
 
-// ------------------------------------------------------------
-// UPDATED: shows the actions the viewer can take on the target
-// user. It no longer displays the target user's rank permissions.
-// ------------------------------------------------------------
+// ============================================================
+// MODERATION PANEL
+// ============================================================
+
 function renderPermissionPanel(user) {
 
-    const panel = get("permissionPanel");
+    const panel =
+        get("permissionPanel");
 
     if (!panel) {
         return;
     }
 
-    const isOwnProfile = user.id === currentUser.id;
+    const isOwnProfile =
+        user.id === currentUser.id;
 
-    // Never show moderation actions on your own profile
     if (isOwnProfile) {
+
         panel.classList.add("hidden");
         panel.innerHTML = "";
+
         return;
     }
 
-    // Regular users do not get an Actions panel
     if (!STAFF_ROLES.includes(currentUser.role)) {
+
         panel.classList.add("hidden");
         panel.innerHTML = "";
+
         return;
     }
 
@@ -1001,10 +1085,11 @@ function renderPermissionPanel(user) {
     const targetLevel =
         ROLE_LEVELS[user.role] ?? 0;
 
-    // Staff cannot moderate users of equal or higher rank
     if (targetLevel >= viewerLevel) {
+
         panel.classList.add("hidden");
         panel.innerHTML = "";
+
         return;
     }
 
@@ -1012,20 +1097,27 @@ function renderPermissionPanel(user) {
         MODERATION_ACTIONS[currentUser.role] || [];
 
     const allowedActions =
-        availableActions.filter(function (action) {
-            return hasPermission(action.permission);
-        });
+        availableActions.filter(
+            function (action) {
+                return hasPermission(
+                    action.permission
+                );
+            }
+        );
 
     if (!allowedActions.length) {
+
         panel.classList.add("hidden");
         panel.innerHTML = "";
+
         return;
     }
 
     const title =
         document.createElement("h4");
 
-    title.textContent = "Actions";
+    title.textContent =
+        "Actions";
 
     const actionsContainer =
         document.createElement("div");
@@ -1033,46 +1125,179 @@ function renderPermissionPanel(user) {
     actionsContainer.className =
         "permission-actions";
 
-    allowedActions.forEach(function (action) {
+    allowedActions.forEach(
+        function (action) {
 
-        const button =
-            document.createElement("button");
+            const button =
+                document.createElement("button");
 
-        button.type = "button";
-        button.className = "moderation-action";
-        button.dataset.action = action.id;
-        button.textContent = action.label;
+            button.type = "button";
+            button.className =
+                "moderation-action";
 
-        button.addEventListener("click", function () {
+            button.dataset.action =
+                action.id;
 
-            handleModerationAction(
-                action.id,
-                user
+            button.textContent =
+                action.label;
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    handleModerationAction(
+                        action.id,
+                        user
+                    );
+
+                }
             );
 
-        });
+            actionsContainer.appendChild(
+                button
+            );
 
-        actionsContainer.appendChild(button);
-
-    });
+        }
+    );
 
     panel.innerHTML = "";
 
     panel.appendChild(title);
-    panel.appendChild(actionsContainer);
+
+    panel.appendChild(
+        actionsContainer
+    );
+
+    // --------------------------------------------------------
+    // CHANGE ROLE
+    // --------------------------------------------------------
+
+    if (
+        allowedActions.some(
+            function (action) {
+                return action.id === "change_role";
+            }
+        )
+    ) {
+
+        const roleSection =
+            document.createElement("div");
+
+        roleSection.className =
+            "change-role-section";
+
+        const roleTitle =
+            document.createElement("h4");
+
+        roleTitle.textContent =
+            "Change Role";
+
+        const roleControls =
+            document.createElement("div");
+
+        roleControls.className =
+            "change-role-controls";
+
+        const roleSelect =
+            document.createElement("select");
+
+        roleSelect.className =
+            "moderation-role-select";
+
+        Object.keys(ROLE_LEVELS)
+            .forEach(function (role) {
+
+                const roleLevel =
+                    ROLE_LEVELS[role];
+
+                if (roleLevel >= viewerLevel) {
+                    return;
+                }
+
+                const option =
+                    document.createElement("option");
+
+                option.value = role;
+                option.textContent = role;
+
+                if (role === user.role) {
+                    option.selected = true;
+                }
+
+                roleSelect.appendChild(
+                    option
+                );
+
+            });
+
+        const roleButton =
+            document.createElement("button");
+
+        roleButton.type = "button";
+        roleButton.className =
+            "moderation-action";
+
+        roleButton.textContent =
+            "🛡️ Apply Role";
+
+        roleButton.addEventListener(
+            "click",
+            function () {
+
+                handleModerationAction(
+                    "change_role",
+                    user,
+                    roleSelect.value
+                );
+
+            }
+        );
+
+        roleControls.appendChild(
+            roleSelect
+        );
+
+        roleControls.appendChild(
+            roleButton
+        );
+
+        roleSection.appendChild(
+            roleTitle
+        );
+
+        roleSection.appendChild(
+            roleControls
+        );
+
+        panel.appendChild(
+            roleSection
+        );
+    }
 
     panel.classList.remove("hidden");
 }
 
 
-function handleModerationAction(action, user) {
+// ============================================================
+// MODERATION ACTION HANDLER
+// ============================================================
+
+async function handleModerationAction(
+    action,
+    user,
+    selectedRole
+) {
 
     if (!user || !user.id) {
         return;
     }
 
     if (user.id === currentUser.id) {
-        alert("You cannot moderate yourself.");
+
+        alert(
+            "You cannot moderate yourself."
+        );
+
         return;
     }
 
@@ -1083,71 +1308,700 @@ function handleModerationAction(action, user) {
         ROLE_LEVELS[user.role] ?? 0;
 
     if (targetLevel >= viewerLevel) {
+
         alert(
             "You cannot moderate someone with an equal or higher rank."
         );
+
         return;
     }
 
-    switch (action) {
+    if (action === "change_role") {
 
-        case "mute":
+        if (!hasPermission("set_ranks")) {
+
             alert(
-                "Mute selected for @" +
-                user.username
+                "You do not have permission to change roles."
             );
-            break;
 
-        case "kick":
+            return;
+        }
+
+        if (!selectedRole) {
+            return;
+        }
+
+        const selectedLevel =
+            ROLE_LEVELS[selectedRole];
+
+        if (
+            selectedLevel === undefined ||
+            selectedLevel >= viewerLevel
+        ) {
+
             alert(
-                "Kick selected for @" +
-                user.username
+                "You cannot assign that role."
             );
-            break;
 
-        case "ban":
+            return;
+        }
+
+        if (
+            selectedRole === user.role
+        ) {
+
             alert(
-                "Ban selected for @" +
-                user.username
+                "That user already has that role."
             );
-            break;
 
-        case "warn":
+            return;
+        }
+
+        const confirmed =
+            confirm(
+                "Change @" +
+                user.username +
+                " from " +
+                user.role +
+                " to " +
+                selectedRole +
+                "?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_change_role",
+            {
+                target_id: user.id,
+                new_role: selectedRole
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
             alert(
-                "Warn selected for @" +
-                user.username
+                error.message ||
+                "Unable to change this user's role."
             );
-            break;
 
-        case "restrict":
+            return;
+        }
+
+        user.role = selectedRole;
+
+        alert(
+            "@" +
+            user.username +
+            " is now " +
+            selectedRole +
+            "."
+        );
+
+        openUserProfile(user);
+
+        return;
+    }
+
+
+    let reason = null;
+    let duration = null;
+
+
+    // --------------------------------------------------------
+    // MUTE
+    // --------------------------------------------------------
+
+    if (action === "mute") {
+
+        duration =
+            parseInt(
+                prompt(
+                    "Mute @" +
+                    user.username +
+                    " for how many minutes?",
+                    "60"
+                ),
+                10
+            );
+
+        if (
+            !Number.isFinite(duration) ||
+            duration <= 0
+        ) {
+
             alert(
-                "Restrict selected for @" +
-                user.username
+                "Please enter a valid duration."
             );
-            break;
 
-        case "delete_messages":
+            return;
+        }
+
+        reason =
+            prompt(
+                "Reason for muting @" +
+                user.username +
+                "?",
+                ""
+            );
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_mute_user",
+            {
+                target_id: user.id,
+                duration_minutes: duration,
+                reason_text: reason || null
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
             alert(
-                "Delete Messages selected for @" +
-                user.username
+                error.message ||
+                "Unable to mute this user."
             );
-            break;
 
-        case "change_role":
+            return;
+        }
+
+        alert(
+            "@" +
+            user.username +
+            " has been muted for " +
+            duration +
+            " minutes."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // KICK
+    // --------------------------------------------------------
+
+    if (action === "kick") {
+
+        const confirmed =
+            confirm(
+                "Kick @" +
+                user.username +
+                "?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        reason =
+            prompt(
+                "Reason for kicking @" +
+                user.username +
+                "?",
+                ""
+            );
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_kick_user",
+            {
+                target_id: user.id,
+                reason_text: reason || null
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
             alert(
-                "Change Role selected for @" +
-                user.username
+                error.message ||
+                "Unable to kick this user."
             );
-            break;
 
-        default:
-            console.warn(
-                "Unknown moderation action:",
-                action
+            return;
+        }
+
+        alert(
+            "@" +
+            user.username +
+            " has been kicked."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // BAN
+    // --------------------------------------------------------
+
+    if (action === "ban") {
+
+        duration =
+            parseInt(
+                prompt(
+                    "Ban @" +
+                    user.username +
+                    " for how many minutes?",
+                    "1440"
+                ),
+                10
             );
+
+        if (
+            !Number.isFinite(duration) ||
+            duration <= 0
+        ) {
+
+            alert(
+                "Please enter a valid duration."
+            );
+
+            return;
+        }
+
+        reason =
+            prompt(
+                "Reason for banning @" +
+                user.username +
+                "?",
+                ""
+            );
+
+        const confirmed =
+            confirm(
+                "Ban @" +
+                user.username +
+                " for " +
+                duration +
+                " minutes?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_ban_user",
+            {
+                target_id: user.id,
+                duration_minutes: duration,
+                reason_text: reason || null
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to ban this user."
+            );
+
+            return;
+        }
+
+        alert(
+            "@" +
+            user.username +
+            " has been banned for " +
+            duration +
+            " minutes."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // WARN
+    // --------------------------------------------------------
+
+    if (action === "warn") {
+
+        reason =
+            prompt(
+                "Warning reason for @" +
+                user.username +
+                "?",
+                ""
+            );
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_warn_user",
+            {
+                target_id: user.id,
+                reason_text: reason || null
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to warn this user."
+            );
+
+            return;
+        }
+
+        alert(
+            "@" +
+            user.username +
+            " has been warned."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // RESTRICT
+    // --------------------------------------------------------
+
+    if (action === "restrict") {
+
+        duration =
+            parseInt(
+                prompt(
+                    "Restrict @" +
+                    user.username +
+                    " for how many minutes?",
+                    "1440"
+                ),
+                10
+            );
+
+        if (
+            !Number.isFinite(duration) ||
+            duration <= 0
+        ) {
+
+            alert(
+                "Please enter a valid duration."
+            );
+
+            return;
+        }
+
+        reason =
+            prompt(
+                "Reason for restricting @" +
+                user.username +
+                "?",
+                ""
+            );
+
+        const {
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_restrict_user",
+            {
+                target_id: user.id,
+                duration_minutes: duration,
+                reason_text: reason || null
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to restrict this user."
+            );
+
+            return;
+        }
+
+        alert(
+            "@" +
+            user.username +
+            " has been restricted for " +
+            duration +
+            " minutes."
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // DELETE MESSAGES
+    // --------------------------------------------------------
+
+    if (action === "delete_messages") {
+
+        const confirmed =
+            confirm(
+                "Delete ALL messages sent by @" +
+                user.username +
+                "?"
+            );
+
+        if (!confirmed) {
+            return;
+        }
+
+        const {
+            data,
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_delete_user_messages",
+            {
+                target_id: user.id
+            }
+        );
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to delete this user's messages."
+            );
+
+            return;
+        }
+
+        alert(
+            "Deleted " +
+            (data || 0) +
+            " message(s) from @" +
+            user.username +
+            "."
+        );
+
+        loadMessages();
+
+        return;
+    }
+
+
+    console.warn(
+        "Unknown moderation action:",
+        action
+    );
+}
+
+
+// ============================================================
+// MODERATION STATUS
+// ============================================================
+
+let moderationStatusInterval = null;
+
+function updateMessageInputState() {
+
+    const input =
+        get("messageInput");
+
+    const form =
+        get("messageForm");
+
+    if (!input || !form) {
+        return;
+    }
+
+    const disabled =
+        currentUser.muted ||
+        currentUser.restricted;
+
+    input.disabled = disabled;
+
+    const button =
+        form.querySelector("button");
+
+    if (button) {
+        button.disabled = disabled;
+    }
+
+    if (currentUser.muted) {
+
+        input.placeholder =
+            "You are currently muted.";
+
+    } else if (currentUser.restricted) {
+
+        input.placeholder =
+            "You are currently restricted.";
+
+    } else {
+
+        input.placeholder =
+            "Message " +
+            rooms[currentRoom].title.substring(2) +
+            "...";
     }
 }
 
+
+async function checkModerationStatus() {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+        return;
+    }
+
+    const {
+        data,
+        error
+    } = await supabaseClient.rpc(
+        "afterhours_get_my_status"
+    );
+
+    if (error) {
+
+        console.error(
+            "Moderation status check failed:",
+            error
+        );
+
+        return;
+    }
+
+    if (!data) {
+        return;
+    }
+
+    const status =
+        Array.isArray(data)
+            ? data[0]
+            : data;
+
+    if (!status) {
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // BAN
+    // --------------------------------------------------------
+
+    if (status.banned) {
+
+        alert(
+            "Your account is currently banned."
+        );
+
+        if (supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
+
+        currentUser = {
+            id: null,
+            username: "",
+            displayName: "",
+            bio: "",
+            avatarUrl: "",
+            role: "Member",
+            muted: false,
+            restricted: false
+        };
+
+        showLanding();
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // KICK
+    // --------------------------------------------------------
+
+    if (status.kicked) {
+
+        alert(
+            "You have been kicked from Afterhours."
+        );
+
+        if (supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
+
+        currentUser = {
+            id: null,
+            username: "",
+            displayName: "",
+            bio: "",
+            avatarUrl: "",
+            role: "Member",
+            muted: false,
+            restricted: false
+        };
+
+        showLanding();
+
+        return;
+    }
+
+
+    currentUser.muted =
+        Boolean(status.muted);
+
+    currentUser.restricted =
+        Boolean(status.restricted);
+
+    updateMessageInputState();
+}
+
+
+function startModerationStatusChecks() {
+
+    if (moderationStatusInterval) {
+
+        clearInterval(
+            moderationStatusInterval
+        );
+    }
+
+    moderationStatusInterval =
+        setInterval(
+            checkModerationStatus,
+            5000
+        );
+}
+
+
+function stopModerationStatusChecks() {
+
+    if (moderationStatusInterval) {
+
+        clearInterval(
+            moderationStatusInterval
+        );
+
+        moderationStatusInterval = null;
+    }
+}
+
+
+// ============================================================
+// PROFILE MODAL
+// ============================================================
 
 function closeProfile() {
 
@@ -1168,21 +2022,18 @@ function openEditProfile() {
     get("editName").value =
         currentUser.displayName || "";
 
-
     get("editBio").value =
         currentUser.bio === "No bio yet."
             ? ""
             : (currentUser.bio || "");
 
-
     updateAvatar(
         get("editAvatarPreview"),
         currentUser.displayName ||
-            currentUser.username ||
-            "User",
+        currentUser.username ||
+        "User",
         currentUser.avatarUrl
     );
-
 
     const status =
         get("avatarUploadStatus");
@@ -1193,9 +2044,7 @@ function openEditProfile() {
             "JPG, PNG, or WebP · Max 2 MB";
     }
 
-
     closeProfile();
-
 
     const modal =
         get("editProfileModal");
@@ -1232,7 +2081,6 @@ async function uploadProfilePicture(file) {
         return;
     }
 
-
     if (!currentUser.id) {
 
         alert(
@@ -1242,18 +2090,15 @@ async function uploadProfilePicture(file) {
         return;
     }
 
-
     if (!file) {
         return;
     }
-
 
     const allowedTypes = [
         "image/png",
         "image/jpeg",
         "image/webp"
     ];
-
 
     if (!allowedTypes.includes(file.type)) {
 
@@ -1264,10 +2109,8 @@ async function uploadProfilePicture(file) {
         return;
     }
 
-
     const maxSize =
         2 * 1024 * 1024;
-
 
     if (file.size > maxSize) {
 
@@ -1278,16 +2121,13 @@ async function uploadProfilePicture(file) {
         return;
     }
 
-
     const status =
         get("avatarUploadStatus");
-
 
     if (status) {
         status.textContent =
             "Uploading picture...";
     }
-
 
     try {
 
@@ -1298,14 +2138,12 @@ async function uploadProfilePicture(file) {
                     ? "webp"
                     : "jpg";
 
-
         const filePath =
             currentUser.id +
             "/avatar-" +
             Date.now() +
             "." +
             extension;
-
 
         const {
             error: uploadError
@@ -1321,16 +2159,17 @@ async function uploadProfilePicture(file) {
                 }
             );
 
-
         if (uploadError) {
 
             console.error(uploadError);
 
-            await saveLocalAvatar(file, status);
+            await saveLocalAvatar(
+                file,
+                status
+            );
 
             return;
         }
-
 
         const {
             data: publicData
@@ -1338,10 +2177,8 @@ async function uploadProfilePicture(file) {
             .from("avatars")
             .getPublicUrl(filePath);
 
-
         const avatarUrl =
             publicData.publicUrl;
-
 
         const {
             error: profileError
@@ -1350,34 +2187,35 @@ async function uploadProfilePicture(file) {
             .update({
                 avatar_url: avatarUrl
             })
-            .eq("id", currentUser.id);
-
+            .eq(
+                "id",
+                currentUser.id
+            );
 
         if (profileError) {
 
             console.error(profileError);
 
-            await saveLocalAvatar(file, status);
+            await saveLocalAvatar(
+                file,
+                status
+            );
 
             return;
         }
 
-
         currentUser.avatarUrl =
             avatarUrl;
 
-
         updateUser();
-
 
         updateAvatar(
             get("editAvatarPreview"),
             currentUser.displayName ||
-                currentUser.username ||
-                "User",
+            currentUser.username ||
+            "User",
             currentUser.avatarUrl
         );
-
 
         if (status) {
 
@@ -1385,15 +2223,12 @@ async function uploadProfilePicture(file) {
                 "Profile picture updated!";
         }
 
-
-        // Allow selecting the same file again later
         const input =
             get("avatarFile");
 
         if (input) {
             input.value = "";
         }
-
 
     } catch (err) {
 
@@ -1426,14 +2261,11 @@ async function saveProfile() {
         return;
     }
 
-
     const displayName =
         get("editName").value.trim();
 
-
     const bio =
         get("editBio").value.trim();
-
 
     if (!displayName) {
 
@@ -1444,7 +2276,6 @@ async function saveProfile() {
         return;
     }
 
-
     if (!currentUser.id) {
 
         alert(
@@ -1454,12 +2285,6 @@ async function saveProfile() {
         return;
     }
 
-
-    // NOTE: this update intentionally only ever sends display_name
-    // and bio. Never add "role" to this payload from the client —
-    // role changes must go through a server-side path (RPC / admin
-    // dashboard), and your Supabase RLS policy should reject any
-    // update that tries to change a user's own role regardless.
     const {
         error
     } = await supabaseClient
@@ -1478,7 +2303,6 @@ async function saveProfile() {
             currentUser.id
         );
 
-
     if (error) {
 
         console.error(error);
@@ -1490,21 +2314,17 @@ async function saveProfile() {
         return;
     }
 
-
     currentUser.displayName =
         displayName;
 
-
     currentUser.bio =
         bio || "No bio yet.";
-
 
     updateUser();
 
     updateOnlineUsers();
 
     closeEditProfile();
-
 
     alert(
         "Profile saved!"
@@ -1520,146 +2340,389 @@ let currentRoom = "general";
 let messageLoadVersion = 0;
 
 function formatMessageTime(timestamp) {
+
     if (!timestamp) {
         return "";
     }
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short"
-    }).format(new Date(timestamp));
+
+    return new Intl.DateTimeFormat(
+        undefined,
+        {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }
+    ).format(
+        new Date(timestamp)
+    );
 }
 
+
 function showMessageStatus(text) {
-    const messages = get("messages");
+
+    const messages =
+        get("messages");
+
     messages.innerHTML = "";
-    const status = document.createElement("p");
-    status.className = "message-status";
-    status.textContent = text;
+
+    const status =
+        document.createElement("p");
+
+    status.className =
+        "message-status";
+
+    status.textContent =
+        text;
+
     messages.appendChild(status);
 }
 
+
 function renderMessage(message, profile) {
-    const messages = get("messages");
-    const user = profile || {};
-    const usernameValue = user.username || "user";
-    const displayName = user.display_name || usernameValue;
-    const name = displayName;
-    const role = getEffectiveRole(user);
-    const avatarUrl = user.avatar_url || "";
-    const messageElement = document.createElement("article");
-    messageElement.className = "message";
 
-    const avatar = document.createElement("div");
-    avatar.className = "avatar clickable-profile";
+    const messages =
+        get("messages");
+
+    const user =
+        profile || {};
+
+    const usernameValue =
+        user.username || "user";
+
+    const displayName =
+        user.display_name ||
+        usernameValue;
+
+    const name =
+        displayName;
+
+    const role =
+        getEffectiveRole(user);
+
+    const avatarUrl =
+        user.avatar_url || "";
+
+    const messageElement =
+        document.createElement("article");
+
+    messageElement.className =
+        "message";
+
+    const avatar =
+        document.createElement("div");
+
+    avatar.className =
+        "avatar clickable-profile";
+
     avatar.tabIndex = 0;
-    avatar.setAttribute("role", "button");
-    avatar.setAttribute("aria-label", "Open " + name + " profile");
-    updateAvatar(avatar, name, avatarUrl);
 
-    const content = document.createElement("div");
-    content.className = "message-content";
-    const header = document.createElement("div");
-    header.className = "message-header";
+    avatar.setAttribute(
+        "role",
+        "button"
+    );
 
-    const displayNameElement = document.createElement("strong");
-    displayNameElement.className = "message-display-name";
-    displayNameElement.textContent = displayName;
+    avatar.setAttribute(
+        "aria-label",
+        "Open " +
+        name +
+        " profile"
+    );
 
-    const username = document.createElement("button");
+    updateAvatar(
+        avatar,
+        name,
+        avatarUrl
+    );
+
+    const content =
+        document.createElement("div");
+
+    content.className =
+        "message-content";
+
+    const header =
+        document.createElement("div");
+
+    header.className =
+        "message-header";
+
+    const displayNameElement =
+        document.createElement("strong");
+
+    displayNameElement.className =
+        "message-display-name";
+
+    displayNameElement.textContent =
+        displayName;
+
+    const username =
+        document.createElement("button");
+
     username.type = "button";
-    username.className = "message-username";
-    username.textContent = "@" + usernameValue;
 
-    const roleElement = document.createElement("span");
-    roleElement.className = "role";
-    applyRank(roleElement, role);
+    username.className =
+        "message-username";
 
-    const timestamp = document.createElement("time");
-    timestamp.className = "message-timestamp";
-    timestamp.dateTime = message.created_at || "";
-    timestamp.textContent = formatMessageTime(message.created_at);
+    username.textContent =
+        "@" +
+        usernameValue;
 
-    const textElement = document.createElement("p");
-    textElement.textContent = message.content;
-    header.appendChild(displayNameElement);
-    header.appendChild(username);
-    header.appendChild(roleElement);
-    header.appendChild(timestamp);
-    content.appendChild(header);
-    content.appendChild(textElement);
-    messageElement.appendChild(avatar);
-    messageElement.appendChild(content);
-    messages.appendChild(messageElement);
+    const roleElement =
+        document.createElement("span");
 
-    const openProfile = function () {
-        openUserProfile({
-            id: user.id || message.user_id,
-            username: usernameValue,
-            displayName: displayName,
-            bio: user.bio || "No bio yet.",
-            role: role,
-            avatarUrl: avatarUrl
-        });
-    };
-    avatar.addEventListener("click", openProfile);
-    username.addEventListener("click", openProfile);
-    avatar.addEventListener("keydown", function (event) {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openProfile();
+    roleElement.className =
+        "role";
+
+    applyRank(
+        roleElement,
+        role
+    );
+
+    const timestamp =
+        document.createElement("time");
+
+    timestamp.className =
+        "message-timestamp";
+
+    timestamp.dateTime =
+        message.created_at || "";
+
+    timestamp.textContent =
+        formatMessageTime(
+            message.created_at
+        );
+
+    const textElement =
+        document.createElement("p");
+
+    textElement.textContent =
+        message.content;
+
+    header.appendChild(
+        displayNameElement
+    );
+
+    header.appendChild(
+        username
+    );
+
+    header.appendChild(
+        roleElement
+    );
+
+    header.appendChild(
+        timestamp
+    );
+
+    content.appendChild(
+        header
+    );
+
+    content.appendChild(
+        textElement
+    );
+
+    messageElement.appendChild(
+        avatar
+    );
+
+    messageElement.appendChild(
+        content
+    );
+
+    messages.appendChild(
+        messageElement
+    );
+
+    const openProfile =
+        function () {
+
+            openUserProfile({
+
+                id:
+                    user.id ||
+                    message.user_id,
+
+                username:
+                    usernameValue,
+
+                displayName:
+                    displayName,
+
+                bio:
+                    user.bio ||
+                    "No bio yet.",
+
+                role:
+                    role,
+
+                avatarUrl:
+                    avatarUrl
+
+            });
+
+        };
+
+    avatar.addEventListener(
+        "click",
+        openProfile
+    );
+
+    username.addEventListener(
+        "click",
+        openProfile
+    );
+
+    avatar.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "Enter" ||
+                event.key === " "
+            ) {
+
+                event.preventDefault();
+
+                openProfile();
+            }
+
         }
-    });
+    );
 }
 
+
 async function loadMessages() {
-    const loadVersion = ++messageLoadVersion;
-    if (!supabaseClient || !currentUser.id) {
-        showMessageStatus("Messages are unavailable right now.");
+
+    const loadVersion =
+        ++messageLoadVersion;
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+
+        showMessageStatus(
+            "Messages are unavailable right now."
+        );
+
         return;
     }
-    showMessageStatus("Loading messages...");
 
-    const { data: messages, error } = await supabaseClient
+    showMessageStatus(
+        "Loading messages..."
+    );
+
+    const {
+        data: messages,
+        error
+    } = await supabaseClient
         .from("messages")
-        .select("id, user_id, room, content, created_at")
-        .eq("room", currentRoom)
-        .order("created_at", { ascending: true });
+        .select(
+            "id, user_id, room, content, created_at"
+        )
+        .eq(
+            "room",
+            currentRoom
+        )
+        .order(
+            "created_at",
+            {
+                ascending: true
+            }
+        );
 
-    if (loadVersion !== messageLoadVersion) {
+    if (
+        loadVersion !==
+        messageLoadVersion
+    ) {
         return;
     }
+
     if (error) {
+
         console.error(error);
-        showMessageStatus("Unable to load messages.");
+
+        showMessageStatus(
+            "Unable to load messages."
+        );
+
         return;
     }
 
-    const userIds = [...new Set((messages || []).map(function (message) {
-        return message.user_id;
-    }).filter(Boolean))];
+    const userIds =
+        [
+            ...new Set(
+                (messages || [])
+                    .map(
+                        function (message) {
+                            return message.user_id;
+                        }
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
     let profiles = [];
+
     if (userIds.length) {
-        const { data, error: profileError } = await supabaseClient
+
+        const {
+            data,
+            error: profileError
+        } = await supabaseClient
             .from("profiles")
-            .select("id, username, display_name, bio, avatar_url, role")
-            .in("id", userIds);
+            .select(
+                "id, username, display_name, bio, avatar_url, role"
+            )
+            .in(
+                "id",
+                userIds
+            );
+
         if (profileError) {
-            console.error(profileError);
+
+            console.error(
+                profileError
+            );
+
         } else {
-            profiles = data || [];
+
+            profiles =
+                data || [];
         }
     }
 
-    if (loadVersion !== messageLoadVersion) {
+    if (
+        loadVersion !==
+        messageLoadVersion
+    ) {
         return;
     }
-    const profilesById = new Map(profiles.map(function (profile) {
-        return [profile.id, profile];
-    }));
-    const container = get("messages");
+
+    const profilesById =
+        new Map(
+            profiles.map(
+                function (profile) {
+
+                    return [
+                        profile.id,
+                        profile
+                    ];
+
+                }
+            )
+        );
+
+    const container =
+        get("messages");
+
     container.innerHTML = "";
 
-    if (!messages || !messages.length) {
+    if (
+        !messages ||
+        !messages.length
+    ) {
+
         container.innerHTML = `
             <div class="welcome-message">
                 <div class="welcome-icon">${rooms[currentRoom].title.substring(0, 2)}</div>
@@ -1667,54 +2730,136 @@ async function loadMessages() {
                 <p>Send the first message.</p>
             </div>
         `;
+
         return;
     }
-    messages.forEach(function (message) {
-        renderMessage(message, profilesById.get(message.user_id));
-    });
-    container.scrollTop = container.scrollHeight;
+
+    messages.forEach(
+        function (message) {
+
+            renderMessage(
+                message,
+                profilesById.get(
+                    message.user_id
+                )
+            );
+
+        }
+    );
+
+    container.scrollTop =
+        container.scrollHeight;
 }
 
-async function sendMessage() {
-    const input = get("messageInput");
-    const messages = get("messages");
-    const text = input.value.trim();
 
-    if (!text || !supabaseClient || !currentUser.id) {
+async function sendMessage() {
+
+    const input =
+        get("messageInput");
+
+    const messages =
+        get("messages");
+
+    const text =
+        input.value.trim();
+
+    if (
+        !text ||
+        !supabaseClient ||
+        !currentUser.id
+    ) {
         return;
     }
 
-    const button = get("messageForm").querySelector("button");
+    if (
+        currentUser.muted ||
+        currentUser.restricted
+    ) {
+
+        alert(
+            currentUser.muted
+                ? "You are currently muted."
+                : "You are currently restricted."
+        );
+
+        return;
+    }
+
+    const button =
+        get("messageForm")
+            .querySelector("button");
+
     button.disabled = true;
 
-    const { data: message, error } = await supabaseClient
-        .from("messages")
-        .insert({
-            user_id: currentUser.id,
-            room: currentRoom,
-            content: text
-        })
-        .select("id, user_id, room, content, created_at")
-        .single();
+    // --------------------------------------------------------
+    // IMPORTANT:
+    // Messages now go through the secure RPC instead of a
+    // direct INSERT. This prevents muted/banned/restricted/
+    // kicked users from bypassing moderation.
+    // --------------------------------------------------------
 
-    button.disabled = false;
+    const {
+        data: message,
+        error
+    } = await supabaseClient.rpc(
+        "afterhours_send_message",
+        {
+            message_room:
+                currentRoom,
+
+            message_content:
+                text
+        }
+    );
+
+    button.disabled =
+        currentUser.muted ||
+        currentUser.restricted;
 
     if (error) {
+
         console.error(error);
-        alert("Unable to send your message.");
+
+        alert(
+            error.message ||
+            "Unable to send your message."
+        );
+
+        // Refresh moderation status in case
+        // the server rejected the message because
+        // a moderation action just became active.
+        await checkModerationStatus();
+
         return;
     }
 
     input.value = "";
-    renderMessage(message, {
-        id: currentUser.id,
-        username: currentUser.username,
-        display_name: currentUser.displayName,
-        bio: currentUser.bio,
-        avatar_url: currentUser.avatarUrl,
-        role: currentUser.role
-    });
-    messages.scrollTop = messages.scrollHeight;
+
+    renderMessage(
+        message,
+        {
+            id:
+                currentUser.id,
+
+            username:
+                currentUser.username,
+
+            display_name:
+                currentUser.displayName,
+
+            bio:
+                currentUser.bio,
+
+            avatar_url:
+                currentUser.avatarUrl,
+
+            role:
+                currentUser.role
+        }
+    );
+
+    messages.scrollTop =
+        messages.scrollHeight;
 }
 
 
@@ -1750,45 +2895,39 @@ function changeRoom(
     const room =
         rooms[roomName];
 
-
     if (!room) {
         return;
     }
 
-    currentRoom = roomName;
-
+    currentRoom =
+        roomName;
 
     document
         .querySelectorAll(".room")
-        .forEach(function (btn) {
+        .forEach(
+            function (btn) {
 
-            btn.classList.remove(
-                "active"
-            );
+                btn.classList.remove(
+                    "active"
+                );
 
-        });
-
+            }
+        );
 
     if (button) {
+
         button.classList.add(
             "active"
         );
     }
 
-
     get("roomTitle").textContent =
         room.title;
-
 
     get("roomDescription").textContent =
         room.description;
 
-
-    get("messageInput").placeholder =
-        "Message " +
-        room.title.substring(2) +
-        "...";
-
+    updateMessageInputState();
 
     loadMessages();
 }
@@ -1801,12 +2940,12 @@ function changeRoom(
 function setupButtons() {
 
     // Landing
+
     get("loginButton")
         .addEventListener(
             "click",
             showLogin
         );
-
 
     get("registerButton")
         .addEventListener(
@@ -1816,19 +2955,18 @@ function setupButtons() {
 
 
     // Login
+
     get("backFromLogin")
         .addEventListener(
             "click",
             showLanding
         );
 
-
     get("loginToRegister")
         .addEventListener(
             "click",
             showRegister
         );
-
 
     get("loginForm")
         .addEventListener(
@@ -1844,19 +2982,18 @@ function setupButtons() {
 
 
     // Register
+
     get("backFromRegister")
         .addEventListener(
             "click",
             showLanding
         );
 
-
     get("registerToLogin")
         .addEventListener(
             "click",
             showLogin
         );
-
 
     get("registerForm")
         .addEventListener(
@@ -1872,12 +3009,12 @@ function setupButtons() {
 
 
     // Chat
+
     get("logoutButton")
         .addEventListener(
             "click",
             logout
         );
-
 
     get("profileButton")
         .addEventListener(
@@ -1885,13 +3022,11 @@ function setupButtons() {
             openProfile
         );
 
-
     get("closeProfileButton")
         .addEventListener(
             "click",
             closeProfile
         );
-
 
     get("editProfileButton")
         .addEventListener(
@@ -1899,13 +3034,11 @@ function setupButtons() {
             openEditProfile
         );
 
-
     get("closeEditProfileButton")
         .addEventListener(
             "click",
             closeEditProfile
         );
-
 
     get("saveProfileButton")
         .addEventListener(
@@ -1915,6 +3048,7 @@ function setupButtons() {
 
 
     // Profile picture picker
+
     get("avatarFile")
         .addEventListener(
             "change",
@@ -1924,7 +3058,9 @@ function setupButtons() {
                     event.target.files[0];
 
                 if (file) {
-                    uploadProfilePicture(file);
+                    uploadProfilePicture(
+                        file
+                    );
                 }
 
             }
@@ -1932,6 +3068,7 @@ function setupButtons() {
 
 
     // Messages
+
     get("messageForm")
         .addEventListener(
             "submit",
@@ -1946,23 +3083,26 @@ function setupButtons() {
 
 
     // Rooms
+
     document
         .querySelectorAll(".room")
-        .forEach(function (button) {
+        .forEach(
+            function (button) {
 
-            button.addEventListener(
-                "click",
-                function () {
+                button.addEventListener(
+                    "click",
+                    function () {
 
-                    changeRoom(
-                        button.dataset.room,
-                        button
-                    );
+                        changeRoom(
+                            button.dataset.room,
+                            button
+                        );
 
-                }
-            );
+                    }
+                );
 
-        });
+            }
+        );
 }
 
 
@@ -1979,14 +3119,12 @@ async function checkSession() {
         return;
     }
 
-
     try {
 
         const {
             data,
             error
         } = await supabaseClient.auth.getSession();
-
 
         if (
             error ||
@@ -1998,10 +3136,8 @@ async function checkSession() {
             return;
         }
 
-
         const user =
             data.session.user;
-
 
         if (!user.email_confirmed_at) {
 
@@ -2011,7 +3147,6 @@ async function checkSession() {
 
             return;
         }
-
 
         const {
             data: profile,
@@ -2026,7 +3161,6 @@ async function checkSession() {
                 user.id
             )
             .single();
-
 
         if (
             profileError ||
@@ -2044,19 +3178,39 @@ async function checkSession() {
             return;
         }
 
-
         currentUser = {
-            id: profile.id,
-            username: profile.username,
-            displayName: profile.display_name,
-            bio: profile.bio || "No bio yet.",
-            avatarUrl: profile.avatar_url || "",
-            role: getEffectiveRole(profile, user)
+
+            id:
+                profile.id,
+
+            username:
+                profile.username,
+
+            displayName:
+                profile.display_name,
+
+            bio:
+                profile.bio ||
+                "No bio yet.",
+
+            avatarUrl:
+                profile.avatar_url ||
+                "",
+
+            role:
+                getEffectiveRole(
+                    profile,
+                    user
+                ),
+
+            muted:
+                false,
+
+            restricted:
+                false
         };
 
-
         showChat();
-
 
     } catch (err) {
 
@@ -2076,3 +3230,4 @@ async function checkSession() {
 
 setupButtons();
 checkSession();
+startModerationStatusChecks();
