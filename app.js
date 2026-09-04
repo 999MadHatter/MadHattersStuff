@@ -566,20 +566,17 @@ async function login() {
             username: profile.username,
             displayName: profile.display_name,
             bio: profile.bio || "No bio yet.",
-            avatarUrl: profile.avatar_url || "",
+            avatarUrl:
+                profile.avatar_url ||
+                localStorage.getItem(
+                    "afterhours-avatar-" +
+                    profile.id
+                ) ||
+                "",
             role: getEffectiveRole(profile, user),
             muted: false,
             restricted: false
         };
-
-        if (!currentUser.avatarUrl) {
-
-            currentUser.avatarUrl =
-                localStorage.getItem(
-                    "afterhours-avatar-" +
-                    currentUser.id
-                ) || "";
-        }
 
         updateUser();
 
@@ -849,6 +846,10 @@ function saveLocalAvatar(file, status) {
                 "User",
                 avatarUrl
             );
+
+            // Refresh messages so the new local avatar
+            // appears on existing messages immediately.
+            loadMessages();
 
             if (status) {
                 status.textContent =
@@ -1127,6 +1128,12 @@ function renderPermissionPanel(user) {
 
     allowedActions.forEach(
         function (action) {
+
+            // Change Role has its own selector below.
+            // Don't create a duplicate button here.
+            if (action.id === "change_role") {
+                return;
+            }
 
             const button =
                 document.createElement("button");
@@ -2207,6 +2214,25 @@ async function uploadProfilePicture(file) {
         currentUser.avatarUrl =
             avatarUrl;
 
+        // Keep a local copy too so the avatar can still
+        // be restored if the profile request temporarily
+        // fails or the storage URL becomes unavailable.
+        try {
+
+            localStorage.setItem(
+                "afterhours-avatar-" +
+                currentUser.id,
+                avatarUrl
+            );
+
+        } catch (error) {
+
+            console.warn(
+                "Unable to save avatar locally:",
+                error
+            );
+        }
+
         updateUser();
 
         updateAvatar(
@@ -2216,6 +2242,10 @@ async function uploadProfilePicture(file) {
             "User",
             currentUser.avatarUrl
         );
+
+        // Refresh existing chat messages so the updated
+        // avatar appears immediately.
+        loadMessages();
 
         if (status) {
 
@@ -2398,8 +2428,25 @@ function renderMessage(message, profile) {
     const role =
         getEffectiveRole(user);
 
-    const avatarUrl =
+    let avatarUrl =
         user.avatar_url || "";
+
+    // If this message belongs to the current user and
+    // the database profile doesn't contain an avatar,
+    // use the locally stored avatar as a fallback.
+    if (
+        !avatarUrl &&
+        user.id === currentUser.id
+    ) {
+
+        avatarUrl =
+            currentUser.avatarUrl ||
+            localStorage.getItem(
+                "afterhours-avatar-" +
+                currentUser.id
+            ) ||
+            "";
+    }
 
     const messageElement =
         document.createElement("article");
@@ -2712,6 +2759,70 @@ async function loadMessages() {
                 }
             )
         );
+
+    // Make sure the current user's locally saved
+    // avatar is available even if the database avatar
+    // is temporarily missing.
+    if (currentUser.id) {
+
+        const localAvatar =
+            localStorage.getItem(
+                "afterhours-avatar-" +
+                currentUser.id
+            );
+
+        if (
+            localAvatar &&
+            currentUser.avatarUrl !== localAvatar
+        ) {
+
+            currentUser.avatarUrl =
+                currentUser.avatarUrl ||
+                localAvatar;
+        }
+
+        const currentProfile =
+            profilesById.get(
+                currentUser.id
+            );
+
+        if (currentProfile) {
+
+            if (
+                !currentProfile.avatar_url &&
+                currentUser.avatarUrl
+            ) {
+
+                currentProfile.avatar_url =
+                    currentUser.avatarUrl;
+            }
+
+        } else {
+
+            profilesById.set(
+                currentUser.id,
+                {
+                    id:
+                        currentUser.id,
+
+                    username:
+                        currentUser.username,
+
+                    display_name:
+                        currentUser.displayName,
+
+                    bio:
+                        currentUser.bio,
+
+                    avatar_url:
+                        currentUser.avatarUrl,
+
+                    role:
+                        currentUser.role
+                }
+            );
+        }
+    }
 
     const container =
         get("messages");
@@ -3178,6 +3289,18 @@ async function checkSession() {
             return;
         }
 
+        // ----------------------------------------------------
+        // FIX:
+        // Restore the local avatar if the Supabase profile
+        // doesn't currently have an avatar URL.
+        // ----------------------------------------------------
+
+        const localAvatar =
+            localStorage.getItem(
+                "afterhours-avatar-" +
+                profile.id
+            );
+
         currentUser = {
 
             id:
@@ -3195,6 +3318,7 @@ async function checkSession() {
 
             avatarUrl:
                 profile.avatar_url ||
+                localAvatar ||
                 "",
 
             role:
