@@ -473,6 +473,10 @@ function showChat() {
 
     updateUser();
     updateOnlineUsers();
+
+    // Start listening for new messages in the current room.
+    subscribeToRoomMessages();
+
     loadMessages();
     checkModerationStatus();
 }
@@ -752,6 +756,9 @@ async function register() {
 
 
 async function logout() {
+
+    // Stop realtime before clearing the current user.
+    await stopRoomMessageRealtime();
 
     if (supabaseClient) {
         await supabaseClient.auth.signOut();
@@ -1914,6 +1921,8 @@ async function checkModerationStatus() {
             "Your account is currently banned."
         );
 
+        await stopRoomMessageRealtime();
+
         if (supabaseClient) {
             await supabaseClient.auth.signOut();
         }
@@ -1944,6 +1953,8 @@ async function checkModerationStatus() {
         alert(
             "You have been kicked from Afterhours."
         );
+
+        await stopRoomMessageRealtime();
 
         if (supabaseClient) {
             await supabaseClient.auth.signOut();
@@ -2369,6 +2380,269 @@ async function saveProfile() {
 let currentRoom = "general";
 let messageLoadVersion = 0;
 
+
+// ============================================================
+// REALTIME MESSAGING
+// ============================================================
+
+let messageRealtimeChannel = null;
+let messageRealtimeRoom = null;
+
+
+// ------------------------------------------------------------
+// Subscribe to new messages for the current room.
+// ------------------------------------------------------------
+async function subscribeToRoomMessages() {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+        return;
+    }
+
+    // Already listening to this room.
+    if (
+        messageRealtimeChannel &&
+        messageRealtimeRoom === currentRoom
+    ) {
+        return;
+    }
+
+    // Remove the previous room listener.
+    if (messageRealtimeChannel) {
+
+        try {
+
+            await supabaseClient.removeChannel(
+                messageRealtimeChannel
+            );
+
+        } catch (err) {
+
+            console.warn(
+                "Unable to remove previous realtime channel:",
+                err
+            );
+
+        }
+
+        messageRealtimeChannel = null;
+        messageRealtimeRoom = null;
+    }
+
+    const roomAtSubscription =
+        currentRoom;
+
+    const channelName =
+        "afterhours-messages-" +
+        roomAtSubscription +
+        "-" +
+        Date.now();
+
+    messageRealtimeChannel =
+        supabaseClient
+            .channel(channelName)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "messages",
+                    filter:
+                        "room=eq." +
+                        roomAtSubscription
+                },
+                async function (payload) {
+
+                    // The user may have switched rooms
+                    // since this listener was created.
+                    if (
+                        currentRoom !==
+                        roomAtSubscription
+                    ) {
+                        return;
+                    }
+
+                    const message =
+                        payload.new;
+
+                    if (!message) {
+                        return;
+                    }
+
+                    // Prevent duplicate rendering.
+                    const existingMessage =
+                        document.querySelector(
+                            '[data-message-id="' +
+                            message.id +
+                            '"]'
+                        );
+
+                    if (existingMessage) {
+                        return;
+                    }
+
+                    let profile = null;
+
+                    if (message.user_id) {
+
+                        const {
+                            data,
+                            error
+                        } = await supabaseClient
+                            .from("profiles")
+                            .select(
+                                "id, username, display_name, bio, avatar_url, role"
+                            )
+                            .eq(
+                                "id",
+                                message.user_id
+                            )
+                            .maybeSingle();
+
+                        if (error) {
+
+                            console.error(
+                                "Realtime profile load failed:",
+                                error
+                            );
+
+                        } else {
+
+                            profile = data;
+                        }
+                    }
+
+                    // If the sender is the current user and
+                    // profile lookup didn't return anything,
+                    // use the local current-user data.
+                    if (
+                        !profile &&
+                        message.user_id ===
+                        currentUser.id
+                    ) {
+
+                        profile = {
+
+                            id:
+                                currentUser.id,
+
+                            username:
+                                currentUser.username,
+
+                            display_name:
+                                currentUser.displayName,
+
+                            bio:
+                                currentUser.bio,
+
+                            avatar_url:
+                                currentUser.avatarUrl,
+
+                            role:
+                                currentUser.role
+                        };
+                    }
+
+                    // If the room changed while the profile
+                    // was loading, don't append this message
+                    // to the wrong room.
+                    if (
+                        currentRoom !==
+                        roomAtSubscription
+                    ) {
+                        return;
+                    }
+
+                    renderMessage(
+                        message,
+                        profile
+                    );
+
+                    const messages =
+                        get("messages");
+
+                    if (messages) {
+
+                        messages.scrollTop =
+                            messages.scrollHeight;
+                    }
+                }
+            )
+            .subscribe(
+                function (status) {
+
+                    console.log(
+                        "Afterhours realtime:",
+                        status,
+                        "room:",
+                        roomAtSubscription
+                    );
+
+                    if (
+                        status === "SUBSCRIBED"
+                    ) {
+
+                        // Only mark this room as active if
+                        // this is still the current channel.
+                        if (
+                            messageRealtimeChannel
+                        ) {
+
+                            messageRealtimeRoom =
+                                roomAtSubscription;
+                        }
+                    }
+
+                    if (
+                        status === "CHANNEL_ERROR" ||
+                        status === "TIMED_OUT" ||
+                        status === "CLOSED"
+                    ) {
+
+                        console.warn(
+                            "Afterhours realtime status:",
+                            status
+                        );
+                    }
+                }
+            );
+}
+
+
+// ------------------------------------------------------------
+// Stop the current realtime listener.
+// ------------------------------------------------------------
+async function stopRoomMessageRealtime() {
+
+    if (
+        !supabaseClient ||
+        !messageRealtimeChannel
+    ) {
+        return;
+    }
+
+    try {
+
+        await supabaseClient.removeChannel(
+            messageRealtimeChannel
+        );
+
+    } catch (err) {
+
+        console.warn(
+            "Unable to remove realtime channel:",
+            err
+        );
+
+    }
+
+    messageRealtimeChannel = null;
+    messageRealtimeRoom = null;
+}
+
+
 function formatMessageTime(timestamp) {
 
     if (!timestamp) {
@@ -2412,6 +2686,21 @@ function renderMessage(message, profile) {
     const messages =
         get("messages");
 
+    // Prevent duplicate messages from being rendered.
+    if (message && message.id) {
+
+        const existingMessage =
+            document.querySelector(
+                '[data-message-id="' +
+                message.id +
+                '"]'
+            );
+
+        if (existingMessage) {
+            return;
+        }
+    }
+
     const user =
         profile || {};
 
@@ -2453,6 +2742,11 @@ function renderMessage(message, profile) {
 
     messageElement.className =
         "message";
+
+    // Store the database message ID on the element.
+    // Realtime uses this to prevent duplicates.
+    messageElement.dataset.messageId =
+        message.id || "";
 
     const avatar =
         document.createElement("div");
@@ -2946,6 +3240,9 @@ async function sendMessage() {
 
     input.value = "";
 
+    // Render the message immediately for the sender.
+    // The realtime listener will see the same message,
+    // but renderMessage() prevents it from being duplicated.
     renderMessage(
         message,
         {
@@ -3039,6 +3336,9 @@ function changeRoom(
         room.description;
 
     updateMessageInputState();
+
+    // Switch the realtime listener to the new room.
+    subscribeToRoomMessages();
 
     loadMessages();
 }
