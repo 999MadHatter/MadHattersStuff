@@ -41,6 +41,8 @@ let currentUser = {
     restricted: false
 };
 
+let viewedProfileUser = null;
+
 const rankDefinitions = {
     Owner: {
         icon: "👑",
@@ -465,11 +467,18 @@ function showChat() {
         page.classList.remove("hidden");
     }
 
+    currentChatMode = "room";
+    currentDmConversationId = null;
+    currentDmUser = null;
+
+    stopDmRealtime();
+
     updateUser();
     updateOnlineUsers();
 
     subscribeToRoomMessages();
     loadMessages();
+    loadDmConversations();
     checkModerationStatus();
 }
 
@@ -770,10 +779,16 @@ async function register() {
 async function logout() {
 
     await stopRoomMessageRealtime();
+    await stopDmRealtime();
 
     if (supabaseClient) {
         await supabaseClient.auth.signOut();
     }
+
+    currentChatMode = "room";
+    currentDmConversationId = null;
+    currentDmUser = null;
+    viewedProfileUser = null;
 
     currentUser = {
 
@@ -1071,6 +1086,9 @@ function openUserProfile(user) {
         user.username ||
         "User";
 
+    viewedProfileUser =
+        user;
+
     if (modal) {
 
         get("profileName").textContent =
@@ -1095,10 +1113,24 @@ function openUserProfile(user) {
             user.avatarUrl
         );
 
+        const isOwnProfile =
+            user.id === currentUser.id;
+
         get("editProfileButton").classList.toggle(
             "hidden",
-            user !== currentUser
+            !isOwnProfile
         );
+
+        const messageButton =
+            get("messageProfileButton");
+
+        if (messageButton) {
+
+            messageButton.classList.toggle(
+                "hidden",
+                isOwnProfile
+            );
+        }
 
         renderPermissionPanel(user);
 
@@ -1948,7 +1980,17 @@ function updateMessageInputState() {
         input.placeholder =
             "You are currently restricted.";
 
-    } else {
+    } else if (
+        currentChatMode === "dm" &&
+        currentDmUser
+    ) {
+
+        input.placeholder =
+            "Message @" +
+            currentDmUser.username +
+            "...";
+
+    } else if (rooms[currentRoom]) {
 
         input.placeholder =
             "Message " +
@@ -2009,6 +2051,7 @@ async function checkModerationStatus() {
         );
 
         await stopRoomMessageRealtime();
+        await stopDmRealtime();
 
         if (supabaseClient) {
             await supabaseClient.auth.signOut();
@@ -2050,6 +2093,7 @@ async function checkModerationStatus() {
         );
 
         await stopRoomMessageRealtime();
+        await stopDmRealtime();
 
         if (supabaseClient) {
             await supabaseClient.auth.signOut();
@@ -2490,6 +2534,23 @@ let messageLoadVersion =
 
 
 // ============================================================
+// DIRECT MESSAGES STATE
+// ============================================================
+
+let currentChatMode =
+    "room";
+
+let currentDmConversationId =
+    null;
+
+let currentDmUser =
+    null;
+
+let dmRealtimeChannel =
+    null;
+
+
+// ============================================================
 // REALTIME MESSAGING
 // ============================================================
 
@@ -2634,8 +2695,6 @@ async function subscribeToRoomMessages() {
     }
 
 
-    // Remove old room subscription.
-
     if (messageRealtimeChannel) {
 
         try {
@@ -2680,9 +2739,6 @@ async function subscribeToRoomMessages() {
             .channel(channelName);
 
 
-    // Store this channel immediately so the
-    // status callback belongs to the correct listener.
-
     messageRealtimeChannel =
         channel;
 
@@ -2706,6 +2762,7 @@ async function subscribeToRoomMessages() {
         async function (payload) {
 
             if (
+                currentChatMode !== "room" ||
                 currentRoom !==
                 roomAtSubscription
             ) {
@@ -2719,10 +2776,6 @@ async function subscribeToRoomMessages() {
                 return;
             }
 
-
-            // ------------------------------------------------
-            // Prevent duplicate rendering.
-            // ------------------------------------------------
 
             if (message.id) {
 
@@ -2742,10 +2795,6 @@ async function subscribeToRoomMessages() {
             let profile =
                 null;
 
-
-            // ------------------------------------------------
-            // Load sender profile.
-            // ------------------------------------------------
 
             if (message.user_id) {
 
@@ -2778,10 +2827,6 @@ async function subscribeToRoomMessages() {
             }
 
 
-            // ------------------------------------------------
-            // Fallback to current user's local profile.
-            // ------------------------------------------------
-
             if (
                 !profile &&
                 message.user_id ===
@@ -2812,6 +2857,7 @@ async function subscribeToRoomMessages() {
 
 
             if (
+                currentChatMode !== "room" ||
                 currentRoom !==
                 roomAtSubscription
             ) {
@@ -2837,10 +2883,6 @@ async function subscribeToRoomMessages() {
     );
 
 
-    // --------------------------------------------------------
-    // Subscribe
-    // --------------------------------------------------------
-
     channel.subscribe(
         function (status) {
 
@@ -2851,9 +2893,6 @@ async function subscribeToRoomMessages() {
                 roomAtSubscription
             );
 
-
-            // Only update the indicator if this
-            // is still the active channel.
 
             if (
                 messageRealtimeChannel ===
@@ -2873,6 +2912,7 @@ async function subscribeToRoomMessages() {
                 if (
                     messageRealtimeChannel ===
                     channel &&
+                    currentChatMode === "room" &&
                     currentRoom ===
                     roomAtSubscription
                 ) {
@@ -2935,6 +2975,271 @@ async function stopRoomMessageRealtime() {
 
         console.warn(
             "Unable to remove realtime channel:",
+            err
+        );
+    }
+}
+
+
+// ============================================================
+// DM REALTIME
+// ============================================================
+
+async function subscribeToDmMessages() {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id ||
+        !currentDmConversationId
+    ) {
+        return;
+    }
+
+
+    await stopDmRealtime();
+
+
+    const conversationAtSubscription =
+        currentDmConversationId;
+
+
+    updateRealtimeStatus(
+        "CONNECTING"
+    );
+
+
+    const channelName =
+        "afterhours-dm-" +
+        conversationAtSubscription +
+        "-" +
+        Date.now();
+
+
+    const channel =
+        supabaseClient.channel(
+            channelName
+        );
+
+
+    dmRealtimeChannel =
+        channel;
+
+
+    channel.on(
+        "postgres_changes",
+        {
+            event:
+                "INSERT",
+
+            schema:
+                "public",
+
+            table:
+                "dm_messages",
+
+            filter:
+                "conversation_id=eq." +
+                conversationAtSubscription
+        },
+        async function (payload) {
+
+            if (
+                currentChatMode !== "dm" ||
+                currentDmConversationId !==
+                conversationAtSubscription
+            ) {
+                return;
+            }
+
+            const message =
+                payload.new;
+
+            if (!message) {
+                return;
+            }
+
+
+            if (message.id) {
+
+                const existingMessage =
+                    document.querySelector(
+                        '[data-message-id="' +
+                        message.id +
+                        '"]'
+                    );
+
+                if (existingMessage) {
+                    return;
+                }
+            }
+
+
+            let profile =
+                null;
+
+
+            if (message.sender_id) {
+
+                const {
+                    data,
+                    error
+                } = await supabaseClient
+                    .from("profiles")
+                    .select(
+                        "id, username, display_name, bio, avatar_url, role"
+                    )
+                    .eq(
+                        "id",
+                        message.sender_id
+                    )
+                    .maybeSingle();
+
+                if (error) {
+
+                    console.error(
+                        "DM realtime profile load failed:",
+                        error
+                    );
+
+                } else {
+
+                    profile =
+                        data;
+                }
+            }
+
+
+            if (
+                !profile &&
+                message.sender_id ===
+                currentUser.id
+            ) {
+
+                profile = {
+
+                    id:
+                        currentUser.id,
+
+                    username:
+                        currentUser.username,
+
+                    display_name:
+                        currentUser.displayName,
+
+                    bio:
+                        currentUser.bio,
+
+                    avatar_url:
+                        currentUser.avatarUrl,
+
+                    role:
+                        currentUser.role
+                };
+            }
+
+
+            if (
+                currentChatMode !== "dm" ||
+                currentDmConversationId !==
+                conversationAtSubscription
+            ) {
+                return;
+            }
+
+
+            renderMessage(
+                {
+                    id:
+                        message.id,
+
+                    user_id:
+                        message.sender_id,
+
+                    content:
+                        message.content,
+
+                    created_at:
+                        message.created_at
+                },
+                profile
+            );
+
+
+            const messages =
+                get("messages");
+
+            if (messages) {
+
+                messages.scrollTop =
+                    messages.scrollHeight;
+            }
+        }
+    );
+
+
+    channel.subscribe(
+        function (status) {
+
+            console.log(
+                "Afterhours DM realtime:",
+                status,
+                "conversation:",
+                conversationAtSubscription
+            );
+
+
+            if (
+                dmRealtimeChannel ===
+                channel
+            ) {
+
+                updateRealtimeStatus(
+                    status
+                );
+            }
+
+
+            if (
+                status === "CHANNEL_ERROR" ||
+                status === "TIMED_OUT" ||
+                status === "CLOSED"
+            ) {
+
+                console.warn(
+                    "Afterhours DM realtime status:",
+                    status
+                );
+            }
+        }
+    );
+}
+
+
+async function stopDmRealtime() {
+
+    if (
+        !supabaseClient ||
+        !dmRealtimeChannel
+    ) {
+        return;
+    }
+
+    const channel =
+        dmRealtimeChannel;
+
+    dmRealtimeChannel =
+        null;
+
+    try {
+
+        await supabaseClient.removeChannel(
+            channel
+        );
+
+    } catch (err) {
+
+        console.warn(
+            "Unable to remove DM realtime channel:",
             err
         );
     }
@@ -3009,10 +3314,6 @@ function renderMessage(
     }
 
 
-    // --------------------------------------------------------
-    // Prevent duplicate messages.
-    // --------------------------------------------------------
-
     if (message.id) {
 
         const existingMessage =
@@ -3059,10 +3360,6 @@ function renderMessage(
         "";
 
 
-    // --------------------------------------------------------
-    // Local fallback for current user.
-    // --------------------------------------------------------
-
     if (
         !avatarUrl &&
         user.id === currentUser.id
@@ -3087,10 +3384,6 @@ function renderMessage(
     messageElement.dataset.messageId =
         message.id || "";
 
-
-    // --------------------------------------------------------
-    // Avatar
-    // --------------------------------------------------------
 
     const avatar =
         document.createElement("div");
@@ -3120,10 +3413,6 @@ function renderMessage(
         avatarUrl
     );
 
-
-    // --------------------------------------------------------
-    // Message content
-    // --------------------------------------------------------
 
     const content =
         document.createElement("div");
@@ -3238,10 +3527,6 @@ function renderMessage(
     );
 
 
-    // --------------------------------------------------------
-    // Profile click
-    // --------------------------------------------------------
-
     const openProfileForMessage =
         function () {
 
@@ -3304,6 +3589,10 @@ function renderMessage(
 // ============================================================
 
 async function loadMessages() {
+
+    if (currentChatMode !== "room") {
+        return;
+    }
 
     const loadVersion =
         ++messageLoadVersion;
@@ -3439,10 +3728,6 @@ async function loadMessages() {
         );
 
 
-    // --------------------------------------------------------
-    // Keep current user's local avatar available.
-    // --------------------------------------------------------
-
     if (currentUser.id) {
 
         const localAvatar =
@@ -3558,10 +3843,15 @@ async function loadMessages() {
 
 
 // ============================================================
-// SEND MESSAGE
+// SEND PUBLIC MESSAGE
 // ============================================================
 
 async function sendMessage() {
+
+    if (currentChatMode === "dm") {
+        await sendDmMessage();
+        return;
+    }
 
     const input =
         get("messageInput");
@@ -3655,11 +3945,6 @@ async function sendMessage() {
             "";
 
 
-        // ----------------------------------------------------
-        // Render immediately for sender.
-        // Realtime will ignore this same ID.
-        // ----------------------------------------------------
-
         renderMessage(
             message,
             {
@@ -3687,6 +3972,1234 @@ async function sendMessage() {
 
         messages.scrollTop =
             messages.scrollHeight;
+
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            "Something went wrong while sending your message."
+        );
+
+    } finally {
+
+        if (button) {
+
+            button.disabled =
+                currentUser.muted ||
+                currentUser.restricted;
+        }
+    }
+}
+
+
+// ============================================================
+// DIRECT MESSAGES
+// ============================================================
+
+function toggleDmList() {
+
+    const list =
+        get("dmList");
+
+    if (!list) {
+        return;
+    }
+
+    list.classList.toggle("hidden");
+
+    if (!list.classList.contains("hidden")) {
+        loadDmConversations();
+    }
+}
+
+
+function renderDmList(conversations) {
+
+    const list =
+        get("dmList");
+
+    if (!list) {
+        return;
+    }
+
+
+    list.innerHTML =
+        "";
+
+
+    // --------------------------------------------------------
+    // New Message button
+    // --------------------------------------------------------
+
+    const newMessageButton =
+        document.createElement("button");
+
+    newMessageButton.type =
+        "button";
+
+    newMessageButton.className =
+        "primary-button full-button";
+
+    newMessageButton.textContent =
+        "＋ New Message";
+
+    newMessageButton.style.marginBottom =
+        "8px";
+
+    newMessageButton.addEventListener(
+        "click",
+        openNewDmModal
+    );
+
+    list.appendChild(
+        newMessageButton
+    );
+
+
+    if (!conversations.length) {
+
+        const empty =
+            document.createElement("p");
+
+        empty.textContent =
+            "No conversations yet.";
+
+        empty.style.padding =
+            "8px";
+
+        empty.style.opacity =
+            "0.7";
+
+        list.appendChild(
+            empty
+        );
+
+        return;
+    }
+
+
+    conversations.forEach(
+        function (conversation) {
+
+            const user =
+                conversation.user;
+
+            if (!user) {
+                return;
+            }
+
+
+            const button =
+                document.createElement("button");
+
+            button.type =
+                "button";
+
+            button.className =
+                "room";
+
+            button.style.width =
+                "100%";
+
+            button.style.textAlign =
+                "left";
+
+            button.style.display =
+                "flex";
+
+            button.style.alignItems =
+                "center";
+
+            button.style.gap =
+                "8px";
+
+
+            const avatar =
+                document.createElement("span");
+
+            avatar.className =
+                "avatar";
+
+            avatar.style.width =
+                "32px";
+
+            avatar.style.height =
+                "32px";
+
+            avatar.style.minWidth =
+                "32px";
+
+
+            updateAvatar(
+                avatar,
+                user.display_name ||
+                user.username ||
+                "User",
+                user.avatar_url || ""
+            );
+
+
+            const name =
+                document.createElement("span");
+
+            name.textContent =
+                user.display_name ||
+                user.username ||
+                "User";
+
+
+            const username =
+                document.createElement("small");
+
+            username.textContent =
+                "@" +
+                (user.username || "user");
+
+            username.style.opacity =
+                "0.65";
+
+
+            const textContainer =
+                document.createElement("span");
+
+            textContainer.style.display =
+                "flex";
+
+            textContainer.style.flexDirection =
+                "column";
+
+            textContainer.style.minWidth =
+                "0";
+
+
+            textContainer.appendChild(
+                name
+            );
+
+            textContainer.appendChild(
+                username
+            );
+
+
+            button.appendChild(
+                avatar
+            );
+
+            button.appendChild(
+                textContainer
+            );
+
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    openDmConversation(
+                        conversation.id,
+                        user
+                    );
+                }
+            );
+
+
+            list.appendChild(
+                button
+            );
+        }
+    );
+}
+
+
+async function loadDmConversations() {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+        return;
+    }
+
+
+    const list =
+        get("dmList");
+
+    if (!list) {
+        return;
+    }
+
+
+    const {
+        data: conversations,
+        error
+    } = await supabaseClient
+        .from("dm_conversations")
+        .select(
+            "id, participant_one, participant_two, created_at"
+        )
+        .or(
+            "participant_one.eq." +
+            currentUser.id +
+            ",participant_two.eq." +
+            currentUser.id
+        )
+        .order(
+            "created_at",
+            {
+                ascending:
+                    false
+            }
+        );
+
+
+    if (error) {
+
+        console.error(
+            "Unable to load DM conversations:",
+            error
+        );
+
+        list.innerHTML = "";
+
+        const errorText =
+            document.createElement("p");
+
+        errorText.textContent =
+            "Unable to load messages.";
+
+        errorText.style.padding =
+            "8px";
+
+        list.appendChild(
+            errorText
+        );
+
+        return;
+    }
+
+
+    const rows =
+        conversations || [];
+
+
+    const otherUserIds =
+        [
+            ...new Set(
+                rows
+                    .map(
+                        function (conversation) {
+
+                            return conversation.participant_one ===
+                                currentUser.id
+                                ? conversation.participant_two
+                                : conversation.participant_one;
+                        }
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+
+    let profiles =
+        [];
+
+
+    if (otherUserIds.length) {
+
+        const {
+            data,
+            error: profileError
+        } = await supabaseClient
+            .from("profiles")
+            .select(
+                "id, username, display_name, bio, avatar_url, role"
+            )
+            .in(
+                "id",
+                otherUserIds
+            );
+
+
+        if (profileError) {
+
+            console.error(
+                "Unable to load DM profiles:",
+                profileError
+            );
+
+        } else {
+
+            profiles =
+                data || [];
+        }
+    }
+
+
+    const profilesById =
+        new Map(
+            profiles.map(
+                function (profile) {
+
+                    return [
+                        profile.id,
+                        profile
+                    ];
+                }
+            )
+        );
+
+
+    const formatted =
+        rows.map(
+            function (conversation) {
+
+                const otherUserId =
+                    conversation.participant_one ===
+                    currentUser.id
+                        ? conversation.participant_two
+                        : conversation.participant_one;
+
+                return {
+
+                    id:
+                        conversation.id,
+
+                    created_at:
+                        conversation.created_at,
+
+                    user:
+                        profilesById.get(
+                            otherUserId
+                        )
+                };
+            }
+        ).filter(
+            function (conversation) {
+                return Boolean(conversation.user);
+            }
+        );
+
+
+    renderDmList(
+        formatted
+    );
+}
+
+
+// ------------------------------------------------------------
+// Find user by username
+// ------------------------------------------------------------
+
+async function findUserByUsername(username) {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+        return null;
+    }
+
+
+    const cleanUsername =
+        username
+            .trim()
+            .replace(/^@/, "");
+
+
+    if (!cleanUsername) {
+        return null;
+    }
+
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("profiles")
+        .select(
+            "id, username, display_name, bio, avatar_url, role"
+        )
+        .eq(
+            "username",
+            cleanUsername
+        )
+        .maybeSingle();
+
+
+    if (error) {
+
+        console.error(
+            "Username search failed:",
+            error
+        );
+
+        throw error;
+    }
+
+
+    return data || null;
+}
+
+
+// ------------------------------------------------------------
+// Open New DM modal
+// ------------------------------------------------------------
+
+function openNewDmModal() {
+
+    const modal =
+        get("newDmModal");
+
+    if (!modal) {
+        return;
+    }
+
+
+    const input =
+        get("dmUsername");
+
+    const status =
+        get("dmSearchStatus");
+
+
+    if (input) {
+        input.value = "";
+    }
+
+    if (status) {
+        status.textContent = "";
+    }
+
+
+    modal.classList.remove(
+        "hidden"
+    );
+
+
+    setTimeout(
+        function () {
+
+            if (input) {
+                input.focus();
+            }
+
+        },
+        50
+    );
+}
+
+
+function closeNewDmModal() {
+
+    const modal =
+        get("newDmModal");
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+
+// ------------------------------------------------------------
+// Start DM from username search
+// ------------------------------------------------------------
+
+async function startNewDm() {
+
+    const input =
+        get("dmUsername");
+
+    const status =
+        get("dmSearchStatus");
+
+    const button =
+        get("startDmButton");
+
+
+    if (!input) {
+        return;
+    }
+
+
+    const username =
+        input.value.trim();
+
+
+    if (!username) {
+
+        if (status) {
+            status.textContent =
+                "Enter a username.";
+        }
+
+        return;
+    }
+
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Searching...";
+    }
+
+
+    if (status) {
+        status.textContent =
+            "";
+    }
+
+
+    try {
+
+        const user =
+            await findUserByUsername(
+                username
+            );
+
+
+        if (!user) {
+
+            if (status) {
+                status.textContent =
+                    "User not found.";
+            }
+
+            return;
+        }
+
+
+        if (
+            user.id ===
+            currentUser.id
+        ) {
+
+            if (status) {
+                status.textContent =
+                    "You cannot message yourself.";
+            }
+
+            return;
+        }
+
+
+        closeNewDmModal();
+
+
+        await openDmWithUser(
+            user
+        );
+
+
+        const list =
+            get("dmList");
+
+        if (list) {
+            list.classList.remove(
+                "hidden"
+            );
+        }
+
+    } catch (err) {
+
+        console.error(err);
+
+        if (status) {
+            status.textContent =
+                err.message ||
+                "Unable to find that user.";
+        }
+
+    } finally {
+
+        if (button) {
+            button.disabled = false;
+            button.textContent =
+                "Start Conversation";
+        }
+    }
+}
+
+
+// ------------------------------------------------------------
+// Open/create DM with a user
+// ------------------------------------------------------------
+
+async function openDmWithUser(user) {
+
+    if (!user || !user.id) {
+        return;
+    }
+
+
+    if (
+        !currentUser.id ||
+        user.id === currentUser.id
+    ) {
+        return;
+    }
+
+
+    if (!supabaseClient) {
+
+        alert(
+            "Messages are currently unavailable."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const {
+            data: conversationId,
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_get_or_create_dm",
+            {
+                target_user_id:
+                    user.id
+            }
+        );
+
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to start this conversation."
+            );
+
+            return;
+        }
+
+
+        if (!conversationId) {
+
+            alert(
+                "Unable to create this conversation."
+            );
+
+            return;
+        }
+
+
+        await openDmConversation(
+            conversationId,
+            user
+        );
+
+
+        loadDmConversations();
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert(
+            err.message ||
+            "Something went wrong while opening this conversation."
+        );
+    }
+}
+
+
+// ------------------------------------------------------------
+// Open a DM conversation
+// ------------------------------------------------------------
+
+async function openDmConversation(
+    conversationId,
+    user
+) {
+
+    if (
+        !conversationId ||
+        !user
+    ) {
+        return;
+    }
+
+
+    currentChatMode =
+        "dm";
+
+    currentDmConversationId =
+        conversationId;
+
+    currentDmUser =
+        user;
+
+
+    document
+        .querySelectorAll(".room")
+        .forEach(
+            function (button) {
+
+                button.classList.remove(
+                    "active"
+                );
+            }
+        );
+
+
+    await stopRoomMessageRealtime();
+
+
+    const roomTitle =
+        get("roomTitle");
+
+    const roomDescription =
+        get("roomDescription");
+
+
+    if (roomTitle) {
+
+        roomTitle.textContent =
+            "💬 @" +
+            (user.username || "user");
+    }
+
+
+    if (roomDescription) {
+
+        roomDescription.textContent =
+            "Private conversation";
+    }
+
+
+    updateMessageInputState();
+
+
+    await subscribeToDmMessages();
+
+    await loadDmMessages();
+
+
+    const messages =
+        get("messages");
+
+    if (messages) {
+
+        messages.scrollTop =
+            messages.scrollHeight;
+    }
+}
+
+
+// ------------------------------------------------------------
+// Load DM messages
+// ------------------------------------------------------------
+
+async function loadDmMessages() {
+
+    const loadVersion =
+        ++messageLoadVersion;
+
+
+    if (
+        !supabaseClient ||
+        !currentUser.id ||
+        !currentDmConversationId
+    ) {
+
+        showMessageStatus(
+            "Messages are unavailable right now."
+        );
+
+        return;
+    }
+
+
+    showMessageStatus(
+        "Loading messages..."
+    );
+
+
+    const conversationAtLoad =
+        currentDmConversationId;
+
+
+    const {
+        data: messages,
+        error
+    } = await supabaseClient
+        .from("dm_messages")
+        .select(
+            "id, conversation_id, sender_id, content, created_at"
+        )
+        .eq(
+            "conversation_id",
+            conversationAtLoad
+        )
+        .order(
+            "created_at",
+            {
+                ascending:
+                    true
+            }
+        );
+
+
+    if (
+        loadVersion !==
+        messageLoadVersion ||
+        currentChatMode !== "dm" ||
+        currentDmConversationId !==
+        conversationAtLoad
+    ) {
+        return;
+    }
+
+
+    if (error) {
+
+        console.error(error);
+
+        showMessageStatus(
+            "Unable to load messages."
+        );
+
+        return;
+    }
+
+
+    const senderIds =
+        [
+            ...new Set(
+                (messages || [])
+                    .map(
+                        function (message) {
+
+                            return message.sender_id;
+                        }
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+
+    let profiles =
+        [];
+
+
+    if (senderIds.length) {
+
+        const {
+            data,
+            error: profileError
+        } = await supabaseClient
+            .from("profiles")
+            .select(
+                "id, username, display_name, bio, avatar_url, role"
+            )
+            .in(
+                "id",
+                senderIds
+            );
+
+
+        if (profileError) {
+
+            console.error(
+                "Unable to load DM profiles:",
+                profileError
+            );
+
+        } else {
+
+            profiles =
+                data || [];
+        }
+    }
+
+
+    if (
+        loadVersion !==
+        messageLoadVersion ||
+        currentChatMode !== "dm" ||
+        currentDmConversationId !==
+        conversationAtLoad
+    ) {
+        return;
+    }
+
+
+    const profilesById =
+        new Map(
+            profiles.map(
+                function (profile) {
+
+                    return [
+                        profile.id,
+                        profile
+                    ];
+                }
+            )
+        );
+
+
+    if (currentUser.id) {
+
+        const currentProfile =
+            profilesById.get(
+                currentUser.id
+            );
+
+
+        if (currentProfile) {
+
+            if (
+                !currentProfile.avatar_url &&
+                currentUser.avatarUrl
+            ) {
+
+                currentProfile.avatar_url =
+                    currentUser.avatarUrl;
+            }
+
+        } else {
+
+            profilesById.set(
+                currentUser.id,
+                {
+
+                    id:
+                        currentUser.id,
+
+                    username:
+                        currentUser.username,
+
+                    display_name:
+                        currentUser.displayName,
+
+                    bio:
+                        currentUser.bio,
+
+                    avatar_url:
+                        currentUser.avatarUrl,
+
+                    role:
+                        currentUser.role
+                }
+            );
+        }
+    }
+
+
+    const container =
+        get("messages");
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML =
+        "";
+
+
+    if (
+        !messages ||
+        !messages.length
+    ) {
+
+        container.innerHTML = `
+            <div class="welcome-message">
+                <div class="welcome-icon">💬</div>
+                <h3>Start a conversation with @${currentDmUser ? currentDmUser.username : "user"}</h3>
+                <p>Send the first private message.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+
+    messages.forEach(
+        function (message) {
+
+            renderMessage(
+                {
+                    id:
+                        message.id,
+
+                    user_id:
+                        message.sender_id,
+
+                    content:
+                        message.content,
+
+                    created_at:
+                        message.created_at
+                },
+                profilesById.get(
+                    message.sender_id
+                )
+            );
+        }
+    );
+
+
+    container.scrollTop =
+        container.scrollHeight;
+}
+
+
+// ------------------------------------------------------------
+// Send DM
+// ------------------------------------------------------------
+
+async function sendDmMessage() {
+
+    const input =
+        get("messageInput");
+
+    const messages =
+        get("messages");
+
+    if (
+        !input ||
+        !messages
+    ) {
+        return;
+    }
+
+
+    const text =
+        input.value.trim();
+
+
+    if (
+        !text ||
+        !supabaseClient ||
+        !currentUser.id ||
+        !currentDmConversationId
+    ) {
+        return;
+    }
+
+
+    if (
+        currentUser.muted ||
+        currentUser.restricted
+    ) {
+
+        alert(
+            currentUser.muted
+                ? "You are currently muted."
+                : "You are currently restricted."
+        );
+
+        return;
+    }
+
+
+    const form =
+        get("messageForm");
+
+
+    const button =
+        form
+            ? form.querySelector("button")
+            : null;
+
+
+    if (button) {
+        button.disabled =
+            true;
+    }
+
+
+    try {
+
+        const {
+            data: message,
+            error
+        } = await supabaseClient.rpc(
+            "afterhours_send_dm_message",
+            {
+                target_conversation_id:
+                    currentDmConversationId,
+
+                message_content:
+                    text
+            }
+        );
+
+
+        if (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "Unable to send your message."
+            );
+
+            await checkModerationStatus();
+
+            return;
+        }
+
+
+        input.value =
+            "";
+
+
+        const dmMessage =
+            Array.isArray(message)
+                ? message[0]
+                : message;
+
+
+        if (dmMessage) {
+
+            renderMessage(
+                {
+                    id:
+                        dmMessage.id,
+
+                    user_id:
+                        dmMessage.sender_id,
+
+                    content:
+                        dmMessage.content,
+
+                    created_at:
+                        dmMessage.created_at
+                },
+                {
+
+                    id:
+                        currentUser.id,
+
+                    username:
+                        currentUser.username,
+
+                    display_name:
+                        currentUser.displayName,
+
+                    bio:
+                        currentUser.bio,
+
+                    avatar_url:
+                        currentUser.avatarUrl,
+
+                    role:
+                        currentUser.role
+                }
+            );
+        }
+
+
+        messages.scrollTop =
+            messages.scrollHeight;
+
+
+        loadDmConversations();
 
 
     } catch (err) {
@@ -3744,7 +5257,7 @@ const rooms = {
 };
 
 
-function changeRoom(
+async function changeRoom(
     roomName,
     button
 ) {
@@ -3755,6 +5268,16 @@ function changeRoom(
     if (!room) {
         return;
     }
+
+
+    currentChatMode =
+        "room";
+
+    currentDmConversationId =
+        null;
+
+    currentDmUser =
+        null;
 
 
     currentRoom =
@@ -3805,16 +5328,9 @@ function changeRoom(
     updateMessageInputState();
 
 
-    // --------------------------------------------------------
-    // Switch realtime listener.
-    // --------------------------------------------------------
+    await stopDmRealtime();
 
     subscribeToRoomMessages();
-
-
-    // --------------------------------------------------------
-    // Load history.
-    // --------------------------------------------------------
 
     loadMessages();
 }
@@ -3947,6 +5463,93 @@ function setupButtons() {
         .addEventListener(
             "click",
             saveProfile
+        );
+
+
+    // --------------------------------------------------------
+    // Profile DM button
+    // --------------------------------------------------------
+
+    get("messageProfileButton")
+        .addEventListener(
+            "click",
+            async function () {
+
+                if (
+                    !viewedProfileUser ||
+                    viewedProfileUser.id ===
+                    currentUser.id
+                ) {
+                    return;
+                }
+
+                const user =
+                    viewedProfileUser;
+
+                closeProfile();
+
+                await openDmWithUser(
+                    user
+                );
+            }
+        );
+
+
+    // --------------------------------------------------------
+    // Direct Messages
+    // --------------------------------------------------------
+
+    get("messagesButton")
+        .addEventListener(
+            "click",
+            toggleDmList
+        );
+
+
+    get("closeNewDmButton")
+        .addEventListener(
+            "click",
+            closeNewDmModal
+        );
+
+
+    get("startDmButton")
+        .addEventListener(
+            "click",
+            startNewDm
+        );
+
+
+    get("dmUsername")
+        .addEventListener(
+            "keydown",
+            function (event) {
+
+                if (
+                    event.key === "Enter"
+                ) {
+
+                    event.preventDefault();
+
+                    startNewDm();
+                }
+            }
+        );
+
+
+    get("newDmModal")
+        .addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    get("newDmModal")
+                ) {
+
+                    closeNewDmModal();
+                }
+            }
         );
 
 
