@@ -1045,67 +1045,181 @@ button {
 }
 
 .permission-panel {
-    width: 230px;
+    width: 250px;
     align-self: center;
 
     padding: 20px;
 
-    border: 2px solid #4b4c58;
+    border: 2px solid #454650;
     border-radius: 18px;
 
-    background: #181920;
+    background:
+        linear-gradient(
+            180deg,
+            #1d1e26 0%,
+            #15161c 100%
+        );
+
     color: #ffffff;
 
-    box-shadow: 0 35px 110px rgba(0, 0, 0, 0.85);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
     text-align: left;
 }
 
+
+/* Panel title */
+
 .permission-panel h4 {
-    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin: 0 0 16px;
+
+    padding-bottom: 13px;
+
+    border-bottom: 2px solid #30313a;
 
     color: #ffffff;
 
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
 
-    letter-spacing: 0.4px;
+    letter-spacing: 0.9px;
     text-transform: uppercase;
 }
+
+.permission-panel h4::before {
+    content: "🛡️";
+
+    font-size: 15px;
+}
+
+
+/* Action list */
 
 .action-buttons {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
 }
+
+
+/* Action buttons */
 
 .action-button {
     width: 100%;
-    min-height: 40px;
+    min-height: 42px;
 
-    padding: 0 14px;
+    display: flex;
+    align-items: center;
 
-    border: 2px solid #565762;
-    border-radius: 9px;
+    padding: 0 13px;
+
+    border: 2px solid #393a44;
+    border-radius: 10px;
 
     background: #1a1b21;
-    color: #ffffff;
+    color: #eeeeF2;
 
     text-align: left;
 
     font-size: 13px;
     font-weight: 800;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease;
 }
 
 .action-button:hover {
-    background: #292a32;
-    border-color: #858692;
+    background: #25262e;
+    border-color: #686974;
+
+    transform: translateY(-1px);
+}
+
+.action-button:active {
+    transform: translateY(0);
 }
 
 .action-button:focus-visible {
     outline: 2px solid #ffffff;
     outline-offset: 2px;
 }
+
+
+/* Change role section */
+
+.permission-panel select {
+    width: 100%;
+    height: 42px;
+
+    margin-top: 6px;
+    padding: 0 11px;
+
+    border: 2px solid #393a44;
+    border-radius: 10px;
+
+    outline: none;
+
+    background: #101116;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.permission-panel select:hover {
+    border-color: #686974;
+}
+
+.permission-panel select:focus {
+    border-color: #ffffff;
+}
+
+
+/* Apply role button */
+
+.permission-panel .primary-button {
+    width: 100%;
+
+    min-height: 42px;
+
+    margin-top: 8px;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+}
+
+
+/* Small section labels */
+
+.permission-panel label {
+    display: block;
+
+    margin: 16px 0 6px;
+
+    color: #aaa8b3;
+
+    font-size: 10px;
+    font-weight: 900;
+
+    letter-spacing: 0.8px;
+
+    text-transform: uppercase;
+}
+
+
+/* Hidden state */
 
 .permission-panel.hidden {
     display: none !important;
