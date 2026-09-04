@@ -1,5 +1,5 @@
 // ============================================================
-// AFTERHOURS - Fixed Version + Profile Pictures + Permission Panel
+// hii lol
 // ============================================================
 
 const SUPABASE_URL = "https://rkynnabggnpqpxzwlbwr.supabase.co";
@@ -56,6 +56,9 @@ const rankDefinitions = {
             "unban_users",
             "mute_users",
             "unmute_users",
+            "kick_users",
+            "warn_users",
+            "restrict_users",
             "delete_any_message",
             "handle_serious_reports",
             "manage_site_settings"
@@ -79,6 +82,9 @@ const rankDefinitions = {
             "unban_users",
             "mute_users",
             "unmute_users",
+            "kick_users",
+            "warn_users",
+            "restrict_users",
             "delete_any_message",
             "handle_serious_reports"
         ]
@@ -89,6 +95,8 @@ const rankDefinitions = {
         permissions: [
             "delete_messages",
             "mute_users",
+            "kick_users",
+            "warn_users",
             "temporary_ban_users",
             "handle_reports",
             "manage_conversations",
@@ -98,7 +106,12 @@ const rankDefinitions = {
     Helper: {
         icon: "🟢",
         className: "rank-helper",
-        permissions: ["help_users", "answer_questions", "report_problems"]
+        permissions: [
+            "help_users",
+            "answer_questions",
+            "report_problems",
+            "warn_users"
+        ]
     },
     VIP: {
         icon: "⭐",
@@ -124,9 +137,142 @@ const rankDefinitions = {
 };
 
 // Roles considered "staff" for the purposes of viewing other users'
-// permission panels. Purely a UI list — actual enforcement of any
-// action must still happen server-side (see Supabase RLS policies).
+// action panels. Actual enforcement of any action must still happen
+// server-side (see Supabase RLS policies).
 const STAFF_ROLES = ["Owner", "Developer", "Admin", "Moderator", "Helper"];
+
+
+// ============================================================
+// MODERATION ACTIONS
+// ============================================================
+
+const ROLE_LEVELS = {
+    Member: 0,
+    OG: 0,
+    VIP: 0,
+    Helper: 1,
+    Moderator: 2,
+    Admin: 3,
+    Developer: 4,
+    Owner: 5
+};
+
+const MODERATION_ACTIONS = {
+    Owner: [
+        {
+            id: "mute",
+            label: "🔇 Mute",
+            permission: "mute_users"
+        },
+        {
+            id: "kick",
+            label: "👢 Kick",
+            permission: "kick_users"
+        },
+        {
+            id: "ban",
+            label: "🔨 Ban",
+            permission: "ban_users"
+        },
+        {
+            id: "warn",
+            label: "⚠️ Warn",
+            permission: "warn_users"
+        },
+        {
+            id: "restrict",
+            label: "🚫 Restrict",
+            permission: "restrict_users"
+        },
+        {
+            id: "delete_messages",
+            label: "🗑️ Delete Messages",
+            permission: "delete_any_message"
+        },
+        {
+            id: "change_role",
+            label: "🛡️ Change Role",
+            permission: "set_ranks"
+        }
+    ],
+
+    Developer: [
+        {
+            id: "mute",
+            label: "🔇 Mute",
+            permission: "mute_users"
+        },
+        {
+            id: "kick",
+            label: "👢 Kick",
+            permission: "kick_users"
+        },
+        {
+            id: "ban",
+            label: "🔨 Ban",
+            permission: "ban_users"
+        }
+    ],
+
+    Admin: [
+        {
+            id: "mute",
+            label: "🔇 Mute",
+            permission: "mute_users"
+        },
+        {
+            id: "kick",
+            label: "👢 Kick",
+            permission: "kick_users"
+        },
+        {
+            id: "ban",
+            label: "🔨 Ban",
+            permission: "ban_users"
+        },
+        {
+            id: "warn",
+            label: "⚠️ Warn",
+            permission: "warn_users"
+        },
+        {
+            id: "restrict",
+            label: "🚫 Restrict",
+            permission: "restrict_users"
+        },
+        {
+            id: "delete_messages",
+            label: "🗑️ Delete Messages",
+            permission: "delete_any_message"
+        }
+    ],
+
+    Moderator: [
+        {
+            id: "mute",
+            label: "🔇 Mute",
+            permission: "mute_users"
+        },
+        {
+            id: "kick",
+            label: "👢 Kick",
+            permission: "kick_users"
+        },
+        {
+            id: "warn",
+            label: "⚠️ Warn",
+            permission: "warn_users"
+        }
+    ],
+
+    Helper: [
+        {
+            id: "warn",
+            label: "⚠️ Warn",
+            permission: "warn_users"
+        }
+    ]
+};
 
 
 // ============================================================
@@ -822,13 +968,8 @@ function openUserProfile(user) {
 
 
 // ------------------------------------------------------------
-// NEW: shows the target user's full permission list inside the
-// profile modal, but only to viewers whose own role is in
-// STAFF_ROLES, and never for a user viewing their own profile
-// (they already see their own role badge). This is a UI-only
-// convenience — it does not grant or check any actual permission,
-// it just displays what the rankDefinitions table says that role
-// can do.
+// UPDATED: shows the actions the viewer can take on the target
+// user. It no longer displays the target user's rank permissions.
 // ------------------------------------------------------------
 function renderPermissionPanel(user) {
 
@@ -838,28 +979,173 @@ function renderPermissionPanel(user) {
         return;
     }
 
-    const viewerIsStaff = STAFF_ROLES.includes(currentUser.role);
     const isOwnProfile = user.id === currentUser.id;
 
-    if (!viewerIsStaff || isOwnProfile) {
+    // Never show moderation actions on your own profile
+    if (isOwnProfile) {
         panel.classList.add("hidden");
         panel.innerHTML = "";
         return;
     }
 
-    const rank = getRankDefinition(user.role);
+    // Regular users do not get an Actions panel
+    if (!STAFF_ROLES.includes(currentUser.role)) {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        return;
+    }
 
-    const list = rank.permissions
-        .map(function (permission) {
-            return "<li>" + permission.replace(/_/g, " ") + "</li>";
-        })
-        .join("");
+    const viewerLevel =
+        ROLE_LEVELS[currentUser.role] ?? 0;
 
-    panel.innerHTML =
-        "<h4>" + rank.icon + " " + user.role + " permissions</h4>" +
-        "<ul>" + list + "</ul>";
+    const targetLevel =
+        ROLE_LEVELS[user.role] ?? 0;
+
+    // Staff cannot moderate users of equal or higher rank
+    if (targetLevel >= viewerLevel) {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        return;
+    }
+
+    const availableActions =
+        MODERATION_ACTIONS[currentUser.role] || [];
+
+    const allowedActions =
+        availableActions.filter(function (action) {
+            return hasPermission(action.permission);
+        });
+
+    if (!allowedActions.length) {
+        panel.classList.add("hidden");
+        panel.innerHTML = "";
+        return;
+    }
+
+    const title =
+        document.createElement("h4");
+
+    title.textContent = "Actions";
+
+    const actionsContainer =
+        document.createElement("div");
+
+    actionsContainer.className =
+        "permission-actions";
+
+    allowedActions.forEach(function (action) {
+
+        const button =
+            document.createElement("button");
+
+        button.type = "button";
+        button.className = "moderation-action";
+        button.dataset.action = action.id;
+        button.textContent = action.label;
+
+        button.addEventListener("click", function () {
+
+            handleModerationAction(
+                action.id,
+                user
+            );
+
+        });
+
+        actionsContainer.appendChild(button);
+
+    });
+
+    panel.innerHTML = "";
+
+    panel.appendChild(title);
+    panel.appendChild(actionsContainer);
 
     panel.classList.remove("hidden");
+}
+
+
+function handleModerationAction(action, user) {
+
+    if (!user || !user.id) {
+        return;
+    }
+
+    if (user.id === currentUser.id) {
+        alert("You cannot moderate yourself.");
+        return;
+    }
+
+    const viewerLevel =
+        ROLE_LEVELS[currentUser.role] ?? 0;
+
+    const targetLevel =
+        ROLE_LEVELS[user.role] ?? 0;
+
+    if (targetLevel >= viewerLevel) {
+        alert(
+            "You cannot moderate someone with an equal or higher rank."
+        );
+        return;
+    }
+
+    switch (action) {
+
+        case "mute":
+            alert(
+                "Mute selected for @" +
+                user.username
+            );
+            break;
+
+        case "kick":
+            alert(
+                "Kick selected for @" +
+                user.username
+            );
+            break;
+
+        case "ban":
+            alert(
+                "Ban selected for @" +
+                user.username
+            );
+            break;
+
+        case "warn":
+            alert(
+                "Warn selected for @" +
+                user.username
+            );
+            break;
+
+        case "restrict":
+            alert(
+                "Restrict selected for @" +
+                user.username
+            );
+            break;
+
+        case "delete_messages":
+            alert(
+                "Delete Messages selected for @" +
+                user.username
+            );
+            break;
+
+        case "change_role":
+            alert(
+                "Change Role selected for @" +
+                user.username
+            );
+            break;
+
+        default:
+            console.warn(
+                "Unknown moderation action:",
+                action
+            );
+    }
 }
 
 
