@@ -1115,6 +1115,10 @@ function openUserProfile(user) {
             user.avatarUrl
         );
 
+        modal.dataset.rank =
+            String(user.role || "member")
+                .toLowerCase();
+
         const isOwnProfile =
             user.id === currentUser.id;
 
@@ -1211,6 +1215,9 @@ function renderPermissionPanel(user) {
     const title =
         document.createElement("h4");
 
+    title.className =
+        "permission-panel-title";
+
     title.textContent =
         "Actions";
 
@@ -1289,6 +1296,9 @@ function renderPermissionPanel(user) {
 
         const roleTitle =
             document.createElement("h4");
+
+        roleTitle.className =
+            "permission-section-label";
 
         roleTitle.textContent =
             "Change Role";
