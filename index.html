@@ -189,7 +189,7 @@
 
     <!-- PROFILE MODAL -->
     <div id="profileModal" class="modal hidden">
-        <div class="modal-card">
+        <div class="modal-card profile-card">
             <button
                 id="closeProfileButton"
                 type="button"
@@ -198,46 +198,45 @@
                 ×
             </button>
 
-            <!-- Profile picture -->
-            <div id="profileAvatar" class="large-avatar">
-                ?
+            <div class="profile-hero">
+                <div id="profileAvatar" class="large-avatar">
+                    ?
+                </div>
+
+                <h2 id="profileName">User</h2>
+
+                <p id="profileUsername" class="profile-username">
+                    @username
+                </p>
+
+                <span id="profileRole" class="profile-rank">
+                    Member
+                </span>
             </div>
 
-            <h2 id="profileName">User</h2>
-
-            <p id="profileUsername" class="profile-username">
-                @username
-            </p>
-
-            <span id="profileRole" class="profile-rank">
-                Member
-            </span>
-
-            <p id="profileBio">
+            <p id="profileBio" class="profile-bio">
                 No bio yet.
             </p>
 
-            <!-- DM BUTTON -->
-            <button
-                id="messageProfileButton"
-                type="button"
-                class="primary-button full-button hidden"
-            >
-                💬 Message
-            </button>
+            <div class="profile-card-actions">
+                <button
+                    id="messageProfileButton"
+                    type="button"
+                    class="profile-message-button full-button hidden"
+                >
+                    💬 Message
+                </button>
 
-            <button
-                id="editProfileButton"
-                type="button"
-                class="primary-button full-button"
-            >
-                Edit Profile
-            </button>
+                <button
+                    id="editProfileButton"
+                    type="button"
+                    class="profile-edit-button full-button"
+                >
+                    Edit Profile
+                </button>
+            </div>
         </div>
 
-        <!-- Sits beside the modal card, shows the actions the
-             viewer (if staff) can take on this user. Filled in by
-             renderPermissionPanel() in app.js. -->
         <div id="permissionPanel" class="permission-panel hidden"></div>
     </div>
 
