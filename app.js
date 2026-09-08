@@ -473,6 +473,8 @@ function showChat() {
 
     stopDmRealtime();
 
+    showRoomsSidebar();
+
     updateUser();
     updateOnlineUsers();
 
@@ -4092,7 +4094,168 @@ async function sendMessage() {
 // DIRECT MESSAGES
 // ============================================================
 
+// ============================================================
+// DIRECT MESSAGES
+// ============================================================
+
+let userSearchTimer = null;
+
+let userSearchVersion = 0;
+
+
+function getSidebar() {
+    return document.querySelector(".sidebar");
+}
+
+
+function setSidebarInboxOpen(isOpen) {
+
+    const sidebar =
+        getSidebar();
+
+    if (!sidebar) {
+        return;
+    }
+
+    sidebar.classList.toggle(
+        "inbox-open",
+        Boolean(isOpen)
+    );
+}
+
+
+function hideSidebarViews() {
+
+    [
+        "sidebarRoomsView",
+        "sidebarMessagesView",
+        "sidebarNewMessageView"
+    ].forEach(function (id) {
+
+        const el = get(id);
+
+        if (el) {
+            el.classList.add("hidden");
+        }
+    });
+}
+
+
+function showRoomsSidebar() {
+
+    hideSidebarViews();
+
+    const roomsView =
+        get("sidebarRoomsView");
+
+    if (roomsView) {
+        roomsView.classList.remove("hidden");
+    }
+
+    setSidebarInboxOpen(false);
+}
+
+
+function showMessagesView() {
+
+    hideSidebarViews();
+
+    const messagesView =
+        get("sidebarMessagesView");
+
+    if (messagesView) {
+        messagesView.classList.remove("hidden");
+    }
+
+    setSidebarInboxOpen(true);
+
+    loadDmConversations();
+}
+
+
+function showNewMessageView() {
+
+    hideSidebarViews();
+
+    const newMessageView =
+        get("sidebarNewMessageView");
+
+    if (newMessageView) {
+        newMessageView.classList.remove("hidden");
+    }
+
+    setSidebarInboxOpen(true);
+
+    const input =
+        get("dmUsername");
+
+    const status =
+        get("dmSearchStatus");
+
+    const results =
+        get("userSearchResults");
+
+    if (input) {
+        input.value = "";
+    }
+
+    if (status) {
+        status.textContent =
+            "Search by name or username.";
+    }
+
+    if (results) {
+        results.innerHTML = "";
+    }
+
+    setTimeout(function () {
+
+        if (input) {
+            input.focus();
+        }
+
+    }, 50);
+}
+
+
 function toggleDmList() {
+
+    const messagesView =
+        get("sidebarMessagesView");
+
+    if (
+        messagesView &&
+        !messagesView.classList.contains("hidden")
+    ) {
+
+        loadDmConversations();
+        return;
+    }
+
+    showMessagesView();
+}
+
+
+function truncatePreview(text) {
+
+    const clean =
+        String(text || "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+    if (!clean) {
+        return "No messages yet.";
+    }
+
+    if (clean.length <= 52) {
+        return clean;
+    }
+
+    return clean.slice(0, 49) + "...";
+}
+
+
+function highlightInboxConversation() {
 
     const list =
         get("dmList");
@@ -4101,11 +4264,115 @@ function toggleDmList() {
         return;
     }
 
-    list.classList.toggle("hidden");
+    list.querySelectorAll(".inbox-item")
+        .forEach(function (item) {
 
-    if (!list.classList.contains("hidden")) {
-        loadDmConversations();
+            item.classList.toggle(
+                "active",
+                item.dataset.conversationId ===
+                    currentDmConversationId
+            );
+        });
+}
+
+
+function renderInboxItem(user, preview, conversationId) {
+
+    const button =
+        document.createElement("button");
+
+    button.type =
+        "button";
+
+    button.className =
+        "inbox-item";
+
+    if (conversationId) {
+
+        button.dataset.conversationId =
+            conversationId;
     }
+
+    if (
+        conversationId &&
+        conversationId === currentDmConversationId
+    ) {
+
+        button.classList.add("active");
+    }
+
+
+    const avatar =
+        document.createElement("span");
+
+    avatar.className =
+        "avatar";
+
+
+    updateAvatar(
+        avatar,
+        user.display_name ||
+        user.username ||
+        "User",
+        user.avatar_url || ""
+    );
+
+
+    const textContainer =
+        document.createElement("span");
+
+    textContainer.className =
+        "inbox-item-text";
+
+
+    const name =
+        document.createElement("span");
+
+    name.className =
+        "inbox-item-name";
+
+    name.textContent =
+        user.display_name ||
+        user.username ||
+        "User";
+
+
+    const username =
+        document.createElement("span");
+
+    username.className =
+        "inbox-item-username";
+
+    username.textContent =
+        "@" +
+        (user.username || "user");
+
+
+    textContainer.appendChild(name);
+    textContainer.appendChild(username);
+
+
+    if (preview !== null) {
+
+        const previewElement =
+            document.createElement("span");
+
+        previewElement.className =
+            "inbox-item-preview";
+
+        previewElement.textContent =
+            truncatePreview(preview);
+
+        textContainer.appendChild(
+            previewElement
+        );
+    }
+
+
+    button.appendChild(avatar);
+    button.appendChild(textContainer);
+
+    return button;
 }
 
 
@@ -4123,48 +4390,16 @@ function renderDmList(conversations) {
         "";
 
 
-    // --------------------------------------------------------
-    // New Message button
-    // --------------------------------------------------------
-
-    const newMessageButton =
-        document.createElement("button");
-
-    newMessageButton.type =
-        "button";
-
-    newMessageButton.className =
-        "primary-button full-button";
-
-    newMessageButton.textContent =
-        "＋ New Message";
-
-    newMessageButton.style.marginBottom =
-        "8px";
-
-    newMessageButton.addEventListener(
-        "click",
-        openNewDmModal
-    );
-
-    list.appendChild(
-        newMessageButton
-    );
-
-
     if (!conversations.length) {
 
         const empty =
             document.createElement("p");
 
+        empty.className =
+            "inbox-empty";
+
         empty.textContent =
             "No conversations yet.";
-
-        empty.style.padding =
-            "8px";
-
-        empty.style.opacity =
-            "0.7";
 
         list.appendChild(
             empty
@@ -4186,104 +4421,11 @@ function renderDmList(conversations) {
 
 
             const button =
-                document.createElement("button");
-
-            button.type =
-                "button";
-
-            button.className =
-                "room";
-
-            button.style.width =
-                "100%";
-
-            button.style.textAlign =
-                "left";
-
-            button.style.display =
-                "flex";
-
-            button.style.alignItems =
-                "center";
-
-            button.style.gap =
-                "8px";
-
-
-            const avatar =
-                document.createElement("span");
-
-            avatar.className =
-                "avatar";
-
-            avatar.style.width =
-                "32px";
-
-            avatar.style.height =
-                "32px";
-
-            avatar.style.minWidth =
-                "32px";
-
-
-            updateAvatar(
-                avatar,
-                user.display_name ||
-                user.username ||
-                "User",
-                user.avatar_url || ""
-            );
-
-
-            const name =
-                document.createElement("span");
-
-            name.textContent =
-                user.display_name ||
-                user.username ||
-                "User";
-
-
-            const username =
-                document.createElement("small");
-
-            username.textContent =
-                "@" +
-                (user.username || "user");
-
-            username.style.opacity =
-                "0.65";
-
-
-            const textContainer =
-                document.createElement("span");
-
-            textContainer.style.display =
-                "flex";
-
-            textContainer.style.flexDirection =
-                "column";
-
-            textContainer.style.minWidth =
-                "0";
-
-
-            textContainer.appendChild(
-                name
-            );
-
-            textContainer.appendChild(
-                username
-            );
-
-
-            button.appendChild(
-                avatar
-            );
-
-            button.appendChild(
-                textContainer
-            );
+                renderInboxItem(
+                    user,
+                    conversation.preview,
+                    conversation.id
+                );
 
 
             button.addEventListener(
@@ -4303,6 +4445,72 @@ function renderDmList(conversations) {
             );
         }
     );
+}
+
+
+async function loadLatestDmPreviews(conversationIds) {
+
+    const previews =
+        new Map();
+
+    if (
+        !supabaseClient ||
+        !conversationIds.length
+    ) {
+        return previews;
+    }
+
+
+    await Promise.all(
+        conversationIds.map(
+            async function (conversationId) {
+
+                const {
+                    data,
+                    error
+                } = await supabaseClient
+                    .from("dm_messages")
+                    .select(
+                        "conversation_id, content, created_at"
+                    )
+                    .eq(
+                        "conversation_id",
+                        conversationId
+                    )
+                    .order(
+                        "created_at",
+                        {
+                            ascending:
+                                false
+                        }
+                    )
+                    .limit(1);
+
+
+                if (error) {
+
+                    console.error(
+                        "Unable to load message preview:",
+                        error
+                    );
+
+                    return;
+                }
+
+
+                if (data && data[0]) {
+
+                    previews.set(
+                        conversationId,
+                        data[0]
+                    );
+                }
+            }
+        )
+    );
+
+
+    return previews;
 }
 
 
@@ -4359,11 +4567,11 @@ async function loadDmConversations() {
         const errorText =
             document.createElement("p");
 
+        errorText.className =
+            "inbox-empty";
+
         errorText.textContent =
             "Unable to load messages.";
-
-        errorText.style.padding =
-            "8px";
 
         list.appendChild(
             errorText
@@ -4444,6 +4652,18 @@ async function loadDmConversations() {
         );
 
 
+    const conversationIds =
+        rows.map(function (conversation) {
+            return conversation.id;
+        });
+
+
+    const previewsById =
+        await loadLatestDmPreviews(
+            conversationIds
+        );
+
+
     const formatted =
         rows.map(
             function (conversation) {
@@ -4454,6 +4674,11 @@ async function loadDmConversations() {
                         ? conversation.participant_two
                         : conversation.participant_one;
 
+                const previewRow =
+                    previewsById.get(
+                        conversation.id
+                    );
+
                 return {
 
                     id:
@@ -4461,6 +4686,16 @@ async function loadDmConversations() {
 
                     created_at:
                         conversation.created_at,
+
+                    last_message_at:
+                        (previewRow &&
+                            previewRow.created_at) ||
+                        conversation.created_at,
+
+                    preview:
+                        previewRow
+                            ? previewRow.content
+                            : "No messages yet.",
 
                     user:
                         profilesById.get(
@@ -4473,6 +4708,15 @@ async function loadDmConversations() {
                 return Boolean(conversation.user);
             }
         );
+
+
+    formatted.sort(
+        function (a, b) {
+
+            return new Date(b.last_message_at) -
+                new Date(a.last_message_at);
+        }
+    );
 
 
     renderDmList(
@@ -4542,56 +4786,275 @@ async function findUserByUsername(username) {
 
 function openNewDmModal() {
 
-    const modal =
-        get("newDmModal");
-
-    if (!modal) {
-        return;
-    }
-
-
-    const input =
-        get("dmUsername");
-
-    const status =
-        get("dmSearchStatus");
-
-
-    if (input) {
-        input.value = "";
-    }
-
-    if (status) {
-        status.textContent = "";
-    }
-
-
-    modal.classList.remove(
-        "hidden"
-    );
-
-
-    setTimeout(
-        function () {
-
-            if (input) {
-                input.focus();
-            }
-
-        },
-        50
-    );
+    showNewMessageView();
 }
 
 
 function closeNewDmModal() {
 
-    const modal =
-        get("newDmModal");
+    showMessagesView();
+}
 
-    if (modal) {
-        modal.classList.add("hidden");
+
+function sanitizeSearchQuery(value) {
+
+    return String(value || "")
+        .trim()
+        .replace(/^@/, "")
+        .replace(/[,%()]/g, "");
+}
+
+
+function renderUserSearchResults(users) {
+
+    const results =
+        get("userSearchResults");
+
+    const status =
+        get("dmSearchStatus");
+
+    if (!results) {
+        return;
     }
+
+
+    results.innerHTML =
+        "";
+
+
+    if (!users.length) {
+
+        if (status) {
+            status.textContent =
+                "No users found.";
+        }
+
+        return;
+    }
+
+
+    if (status) {
+        status.textContent =
+            "";
+    }
+
+
+    users.forEach(
+        function (user) {
+
+            const button =
+                renderInboxItem(
+                    user,
+                    null,
+                    null
+                );
+
+
+            button.addEventListener(
+                "click",
+                async function () {
+
+                    showMessagesView();
+
+                    await openDmWithUser(
+                        user
+                    );
+                }
+            );
+
+
+            results.appendChild(
+                button
+            );
+        }
+    );
+}
+
+
+async function searchUsersLive(rawQuery) {
+
+    const status =
+        get("dmSearchStatus");
+
+    const results =
+        get("userSearchResults");
+
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+
+        if (status) {
+            status.textContent =
+                "Search is unavailable right now.";
+        }
+
+        return;
+    }
+
+
+    const query =
+        sanitizeSearchQuery(
+            rawQuery
+        );
+
+
+    const searchVersion =
+        ++userSearchVersion;
+
+
+    if (!query) {
+
+        if (results) {
+            results.innerHTML = "";
+        }
+
+        if (status) {
+            status.textContent =
+                "Search by name or username.";
+        }
+
+        return;
+    }
+
+
+    if (status) {
+        status.textContent =
+            "Searching...";
+    }
+
+
+    const pattern =
+        "%" +
+        query.replace(/\\/g, "\\\\")
+            .replace(/%/g, "\\%")
+            .replace(/_/g, "\\_") +
+        "%";
+
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("profiles")
+        .select(
+            "id, username, display_name, bio, avatar_url, role"
+        )
+        .or(
+            "username.ilike.\"" +
+            pattern +
+            "\",display_name.ilike.\"" +
+            pattern +
+            "\""
+        )
+        .limit(20);
+
+
+    if (searchVersion !== userSearchVersion) {
+        return;
+    }
+
+
+    if (error) {
+
+        console.error(
+            "User search failed:",
+            error
+        );
+
+
+        try {
+
+            const user =
+                await findUserByUsername(
+                    query
+                );
+
+
+            if (searchVersion !== userSearchVersion) {
+                return;
+            }
+
+
+            if (
+                user &&
+                user.id !== currentUser.id
+            ) {
+
+                renderUserSearchResults(
+                    [user]
+                );
+
+                return;
+            }
+
+        } catch (fallbackError) {
+
+            console.error(
+                fallbackError
+            );
+        }
+
+
+        if (status) {
+            status.textContent =
+                "Unable to search users.";
+        }
+
+        if (results) {
+            results.innerHTML = "";
+        }
+
+        return;
+    }
+
+
+    const users =
+        (data || []).filter(
+            function (user) {
+
+                return user.id !== currentUser.id;
+            }
+        );
+
+
+    renderUserSearchResults(
+        users
+    );
+}
+
+
+function handleUserSearchInput() {
+
+    const input =
+        get("dmUsername");
+
+    const query =
+        input
+            ? input.value
+            : "";
+
+
+    if (userSearchTimer) {
+
+        clearTimeout(
+            userSearchTimer
+        );
+    }
+
+
+    userSearchTimer =
+        setTimeout(
+            function () {
+
+                searchUsersLive(
+                    query
+                );
+
+            },
+            160
+        );
 }
 
 
@@ -4682,16 +5145,6 @@ async function startNewDm() {
         await openDmWithUser(
             user
         );
-
-
-        const list =
-            get("dmList");
-
-        if (list) {
-            list.classList.remove(
-                "hidden"
-            );
-        }
 
     } catch (err) {
 
@@ -4837,6 +5290,9 @@ async function openDmConversation(
                 );
             }
         );
+
+
+    highlightInboxConversation();
 
 
     await stopRoomMessageRealtime();
@@ -5378,6 +5834,9 @@ async function changeRoom(
         roomName;
 
 
+    showRoomsSidebar();
+
+
     document
         .querySelectorAll(".room")
         .forEach(
@@ -5582,6 +6041,8 @@ function setupButtons() {
 
                 closeProfile();
 
+                showMessagesView();
+
                 await openDmWithUser(
                     user
                 );
@@ -5600,22 +6061,53 @@ function setupButtons() {
         );
 
 
-    get("closeNewDmButton")
-        .addEventListener(
+    const messagesBackButton =
+        get("messagesBackButton");
+
+    if (messagesBackButton) {
+
+        messagesBackButton.addEventListener(
+            "click",
+            showRoomsSidebar
+        );
+    }
+
+
+    const newMessageButton =
+        get("newMessageButton");
+
+    if (newMessageButton) {
+
+        newMessageButton.addEventListener(
+            "click",
+            openNewDmModal
+        );
+    }
+
+
+    const newMessageBackButton =
+        get("newMessageBackButton");
+
+    if (newMessageBackButton) {
+
+        newMessageBackButton.addEventListener(
             "click",
             closeNewDmModal
         );
+    }
 
 
-    get("startDmButton")
-        .addEventListener(
-            "click",
-            startNewDm
+    const dmUsernameInput =
+        get("dmUsername");
+
+    if (dmUsernameInput) {
+
+        dmUsernameInput.addEventListener(
+            "input",
+            handleUserSearchInput
         );
 
-
-    get("dmUsername")
-        .addEventListener(
+        dmUsernameInput.addEventListener(
             "keydown",
             function (event) {
 
@@ -5629,22 +6121,7 @@ function setupButtons() {
                 }
             }
         );
-
-
-    get("newDmModal")
-        .addEventListener(
-            "click",
-            function (event) {
-
-                if (
-                    event.target ===
-                    get("newDmModal")
-                ) {
-
-                    closeNewDmModal();
-                }
-            }
-        );
+    }
 
 
     // --------------------------------------------------------
