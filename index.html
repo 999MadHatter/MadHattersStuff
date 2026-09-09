@@ -29,8 +29,8 @@
                 <h2>Welcome back</h2>
                 <p>Log in to your Afterhours account.</p>
                 <form id="loginForm">
-                    <label for="loginEmail">Email</label>
-                    <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+                    <label for="loginEmail">Email or Username</label>
+                    <input id="loginEmail" type="text" placeholder="you@example.com or @username" autocomplete="username" required>
 
                     <label for="loginPassword">Password</label>
                     <input id="loginPassword" type="password" placeholder="Your password" autocomplete="current-password" required>
@@ -101,6 +101,30 @@
                             <span class="messages-button-label">Messages</span>
                         </button>
                     </div>
+
+                    <div class="friends-dock">
+                        <button id="friendsButton" type="button" class="messages-button friends-button" aria-expanded="false" onclick="toggleFriends()">
+                            <span class="messages-button-icon">👥</span>
+                            <span class="messages-button-label">Friends</span>
+                            <span id="friendRequestBadge" class="notification-badge hidden">0</span>
+                        </button>
+                    </div>
+
+                    <div class="notifications-dock">
+                        <button id="notificationsButton" type="button" class="messages-button notifications-button" aria-expanded="false">
+                            <span class="messages-button-icon">🔔</span>
+                            <span class="messages-button-label">Notifications</span>
+                            <span id="notificationBadge" class="notification-badge hidden">0</span>
+                        </button>
+                    </div>
+
+                    <div id="notificationsPanel" class="notifications-panel hidden">
+                        <div class="notifications-header">
+                            <span>Notifications</span>
+                            <button id="markNotificationsRead" type="button">Mark all read</button>
+                        </div>
+                        <div id="notificationsList" class="notifications-list"></div>
+                    </div>
                 </div>
 
                 <!-- MESSAGES MENU -->
@@ -167,12 +191,32 @@
                 </div>
 
                 <form id="messageForm" class="message-form">
+                    <button
+                        id="attachmentButton"
+                        type="button"
+                        class="attachment-button"
+                        title="Attach an image or file"
+                        aria-label="Attach an image or file"
+                    >
+                        +
+                    </button>
+
+                    <input
+                        id="attachmentInput"
+                        type="file"
+                        hidden
+                        accept="image/*,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.zip"
+                    >
+
+                    <div id="attachmentPreview" class="attachment-preview hidden"></div>
+
                     <input
                         id="messageInput"
                         type="text"
                         placeholder="Message General..."
                         autocomplete="off"
                     >
+
                     <button type="submit" class="primary-button">
                         Send
                     </button>
@@ -187,155 +231,480 @@
         </div>
     </main>
 
+    <!-- FRIENDS -->
+    <div id="friendsOverlay" class="friends-overlay hidden"></div>
+
+    <aside id="friendsPanel" class="friends-panel hidden" aria-hidden="true">
+        <div class="friends-panel-header">
+            <div>
+                <h2>Friends</h2>
+                <p id="friendsCount">0 friends</p>
+            </div>
+
+            <button
+                id="closeFriendsButton"
+                type="button"
+                class="friends-close-button"
+                aria-label="Close friends"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="friends-tabs">
+            <button
+                id="friendsTab"
+                type="button"
+                class="friends-tab active"
+            >
+                Friends
+            </button>
+
+            <button
+                id="requestsTab"
+                type="button"
+                class="friends-tab"
+            >
+                Requests
+                <span
+                    id="friendsRequestsBadge"
+                    class="notification-badge hidden"
+                >
+                    0
+                </span>
+            </button>
+        </div>
+
+        <div id="friendsList" class="friends-list"></div>
+
+        <div
+            id="friendRequestsList"
+            class="friends-list hidden"
+        ></div>
+    </aside>
+
     <!-- PROFILE MODAL -->
-    <div id="profileModal" class="modal hidden">
-        <div class="modal-card profile-card">
+    <div id="profileOverlay" class="profile-overlay hidden"></div>
+
+    <div
+        id="profileModal"
+        class="profile-modal hidden"
+        aria-hidden="true"
+    >
+        <div class="profile-modal-card">
+
             <button
                 id="closeProfileButton"
                 type="button"
-                class="close-button"
+                class="profile-close-button"
+                aria-label="Close profile"
             >
                 ×
             </button>
 
-            <div class="profile-hero">
-                <div id="profileAvatar" class="large-avatar">
+            <div class="profile-modal-banner"></div>
+
+            <div class="profile-modal-content">
+
+                <div
+                    id="profileModalAvatar"
+                    class="profile-modal-avatar"
+                >
                     ?
                 </div>
 
-                <h2 id="profileName">User</h2>
+                <div class="profile-modal-name-row">
+                    <h2 id="profileModalName">
+                        User
+                    </h2>
 
-                <p id="profileUsername" class="profile-username">
+                    <span
+                        id="profileModalRank"
+                        class="rank-badge hidden"
+                    ></span>
+                </div>
+
+                <div
+                    id="profileModalUsername"
+                    class="profile-modal-username"
+                >
                     @username
-                </p>
+                </div>
 
-                <span id="profileRole" class="profile-rank">
-                    Member
-                </span>
-            </div>
-
-            <p id="profileBio" class="profile-bio">
-                No bio yet.
-            </p>
-
-            <div class="profile-card-actions">
-                <button
-                    id="messageProfileButton"
-                    type="button"
-                    class="profile-message-button full-button hidden"
+                <div
+                    id="profileModalBio"
+                    class="profile-modal-bio"
                 >
-                    💬 Message
-                </button>
+                    No bio yet.
+                </div>
 
-                <button
-                    id="editProfileButton"
-                    type="button"
-                    class="profile-edit-button full-button"
-                >
-                    Edit Profile
-                </button>
+                <div
+                    id="profileModalActions"
+                    class="profile-modal-actions"
+                ></div>
+
             </div>
         </div>
-
-        <div id="permissionPanel" class="permission-panel hidden"></div>
     </div>
 
-    <!-- EDIT PROFILE MODAL -->
-    <div id="editProfileModal" class="modal hidden">
-        <div class="modal-card">
+    <!-- EDIT PROFILE -->
+    <div
+        id="editProfileModal"
+        class="profile-modal hidden"
+        aria-hidden="true"
+    >
+        <div class="profile-modal-card edit-profile-card">
 
             <button
                 id="closeEditProfileButton"
                 type="button"
-                class="close-button"
+                class="profile-close-button"
+                aria-label="Close edit profile"
             >
                 ×
             </button>
 
-            <h2>Edit Profile</h2>
+            <div class="profile-modal-content">
 
-            <!-- PROFILE PICTURE UPLOAD -->
-            <div class="avatar-upload-section">
+                <h2>Edit Profile</h2>
 
-                <div
-                    id="editAvatarPreview"
-                    class="large-avatar"
-                >
-                    ?
-                </div>
+                <form id="editProfileForm">
 
-                <label
-                    for="avatarFile"
-                    class="avatar-upload-button"
-                >
-                    Choose Profile Picture
-                </label>
+                    <label for="editDisplayName">
+                        Display Name
+                    </label>
 
-                <input
-                    id="avatarFile"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    hidden
-                >
+                    <input
+                        id="editDisplayName"
+                        type="text"
+                        maxlength="32"
+                    >
 
-                <p
-                    id="avatarUploadStatus"
-                    class="avatar-upload-status"
-                >
-                    JPG, PNG, or WebP · Max 2 MB
-                </p>
+                    <label for="editBio">
+                        Bio
+                    </label>
+
+                    <textarea
+                        id="editBio"
+                        maxlength="160"
+                    ></textarea>
+
+                    <label for="editAvatarInput">
+                        Profile Picture
+                    </label>
+
+                    <input
+                        id="editAvatarInput"
+                        type="file"
+                        accept="image/*"
+                    >
+
+                    <button
+                        type="submit"
+                        class="primary-button full-button"
+                    >
+                        Save Changes
+                    </button>
+
+                </form>
 
             </div>
-
-            <!-- DISPLAY NAME -->
-            <label for="editUsername">
-                Username
-            </label>
-
-            <input
-                id="editUsername"
-                type="text"
-                readonly
-                aria-readonly="true"
-            >
-
-            <label for="editName">
-                Display Name
-            </label>
-
-            <input
-                id="editName"
-                type="text"
-                maxlength="40"
-            >
-
-            <!-- BIO -->
-            <label for="editBio">
-                Bio
-            </label>
-
-            <textarea
-                id="editBio"
-                maxlength="200"
-            ></textarea>
-
-            <!-- SAVE -->
-            <button
-                id="saveProfileButton"
-                type="button"
-                class="primary-button full-button"
-            >
-                Save Changes
-            </button>
-
         </div>
     </div>
 
-    <!-- SUPABASE -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- STAFF CONSOLE -->
+    <div
+        id="staffConsoleOverlay"
+        class="staff-console-overlay hidden"
+    ></div>
 
-    <!-- APP -->
+    <aside
+        id="staffConsole"
+        class="staff-console hidden"
+        aria-hidden="true"
+    >
+        <div class="staff-console-header">
+            <div>
+                <h2>Afterhours Console</h2>
+                <p>Developer / Staff Tools</p>
+            </div>
+
+            <button
+                id="closeStaffConsole"
+                type="button"
+                class="profile-close-button"
+            >
+                ×
+            </button>
+        </div>
+
+        <div
+            id="consoleLogs"
+            class="console-logs"
+        ></div>
+    </aside>
+
+    <!-- EDITOR -->
+    <div
+        id="editorOverlay"
+        class="editor-overlay hidden"
+    ></div>
+
+    <aside
+        id="editorPanel"
+        class="editor-panel hidden"
+        aria-hidden="true"
+    >
+        <div class="editor-header">
+            <div>
+                <h2>Afterhours Editor</h2>
+                <p>Manage rooms and ranks</p>
+            </div>
+
+            <button
+                id="closeEditorButton"
+                type="button"
+                class="profile-close-button"
+            >
+                ×
+            </button>
+        </div>
+
+        <div class="editor-content">
+
+            <section class="editor-section">
+
+                <div class="editor-section-header">
+                    <div>
+                        <h3>Rooms</h3>
+                        <p>Create and manage custom rooms.</p>
+                    </div>
+
+                    <button
+                        id="newRoomButton"
+                        type="button"
+                        class="primary-button"
+                    >
+                        + New Room
+                    </button>
+                </div>
+
+                <div
+                    id="editorRoomsList"
+                    class="editor-list"
+                ></div>
+
+            </section>
+
+            <section class="editor-section">
+
+                <div class="editor-section-header">
+                    <div>
+                        <h3>Ranks</h3>
+                        <p>Create custom ranks and permissions.</p>
+                    </div>
+
+                    <button
+                        id="newRankButton"
+                        type="button"
+                        class="primary-button"
+                    >
+                        + New Rank
+                    </button>
+                </div>
+
+                <div
+                    id="editorRanksList"
+                    class="editor-list"
+                ></div>
+
+            </section>
+
+        </div>
+    </aside>
+
+    <!-- ROOM EDITOR MODAL -->
+    <div
+        id="roomEditorModal"
+        class="modal hidden"
+    >
+        <div class="modal-card">
+
+            <div class="modal-header">
+                <h2 id="roomEditorTitle">
+                    New Room
+                </h2>
+
+                <button
+                    id="closeRoomEditor"
+                    type="button"
+                    class="profile-close-button"
+                >
+                    ×
+                </button>
+            </div>
+
+            <form id="roomEditorForm">
+
+                <label for="roomNameInput">
+                    Name
+                </label>
+
+                <input
+                    id="roomNameInput"
+                    type="text"
+                    maxlength="40"
+                    required
+                >
+
+                <label for="roomDescriptionInput">
+                    Description
+                </label>
+
+                <textarea
+                    id="roomDescriptionInput"
+                    maxlength="160"
+                ></textarea>
+
+                <label for="roomVisibilityInput">
+                    Visibility
+                </label>
+
+                <select id="roomVisibilityInput">
+                    <option value="public">
+                        Public
+                    </option>
+
+                    <option value="private">
+                        Private
+                    </option>
+                </select>
+
+                <label>
+                    Allowed Ranks
+                </label>
+
+                <div
+                    id="roomAllowedRoles"
+                    class="permission-grid"
+                ></div>
+
+                <button
+                    type="submit"
+                    class="primary-button full-button"
+                >
+                    Save Room
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- RANK EDITOR MODAL -->
+    <div
+        id="rankEditorModal"
+        class="modal hidden"
+    >
+        <div class="modal-card">
+
+            <div class="modal-header">
+                <h2 id="rankEditorTitle">
+                    New Rank
+                </h2>
+
+                <button
+                    id="closeRankEditor"
+                    type="button"
+                    class="profile-close-button"
+                >
+                    ×
+                </button>
+            </div>
+
+            <form id="rankEditorForm">
+
+                <label for="rankNameInput">
+                    Rank Name
+                </label>
+
+                <input
+                    id="rankNameInput"
+                    type="text"
+                    maxlength="40"
+                    required
+                >
+
+                <label for="rankColorInput">
+                    Color
+                </label>
+
+                <input
+                    id="rankColorInput"
+                    type="color"
+                    value="#ffffff"
+                >
+
+                <label for="rankBadgeInput">
+                    Badge
+                </label>
+
+                <input
+                    id="rankBadgeInput"
+                    type="text"
+                    maxlength="8"
+                    placeholder="★"
+                >
+
+                <label for="rankPriorityInput">
+                    Priority
+                </label>
+
+                <input
+                    id="rankPriorityInput"
+                    type="number"
+                    value="0"
+                >
+
+                <label>
+                    Permissions
+                </label>
+
+                <div
+                    id="rankPermissions"
+                    class="permission-grid"
+                ></div>
+
+                <button
+                    type="submit"
+                    class="primary-button full-button"
+                >
+                    Save Rank
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- ATTACHMENT LIGHTBOX -->
+    <div
+        id="attachmentLightbox"
+        class="attachment-lightbox hidden"
+    >
+        <button
+            id="closeAttachmentLightbox"
+            type="button"
+            class="attachment-lightbox-close"
+        >
+            ×
+        </button>
+
+        <img
+            id="attachmentLightboxImage"
+            src=""
+            alt="Full size attachment"
+        >
+    </div>
+
     <script src="./app.js"></script>
-
 </body>
 </html>
