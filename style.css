@@ -2018,3 +2018,269 @@ button {
         content: none;
     }
 }
+/* ============================================================
+   AFTERHOURS — CHAT ATTACHMENTS
+============================================================ */
+
+.attachment-button {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+
+    border: 2px solid #474853;
+    border-radius: 11px;
+
+    background: #17181f;
+    color: #ffffff;
+
+    font-size: 27px;
+    line-height: 1;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.attachment-button:hover {
+    background: #22232c;
+    border-color: #6b6c78;
+}
+
+.attachment-button:active {
+    transform: scale(0.97);
+}
+
+.attachment-preview {
+    position: absolute;
+
+    left: 32px;
+    bottom: 84px;
+
+    max-width: min(420px, calc(100% - 64px));
+
+    padding: 8px 12px;
+
+    border: 2px solid #474853;
+    border-radius: 10px;
+
+    background: #17181f;
+    color: #ffffff;
+
+    z-index: 5;
+}
+
+.attachment-preview.hidden {
+    display: none;
+}
+
+.attachment-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.attachment-preview-thumb {
+    width: 42px;
+    height: 42px;
+
+    object-fit: cover;
+
+    border-radius: 7px;
+}
+
+.attachment-preview-name {
+    max-width: 260px;
+
+    overflow: hidden;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-remove {
+    border: 0;
+
+    background: transparent;
+
+    color: #aaa8b3;
+
+    cursor: pointer;
+
+    font-size: 20px;
+    line-height: 1;
+}
+
+.attachment-remove:hover {
+    color: #ffffff;
+}
+
+/* Attachment displayed inside a message */
+
+.message-attachment {
+    margin-top: 10px;
+}
+
+.message-image {
+    display: block;
+
+    max-width: min(420px, 100%);
+    max-height: 360px;
+
+    border: 1px solid #383944;
+    border-radius: 10px;
+
+    cursor: pointer;
+
+    object-fit: contain;
+}
+
+.message-image:hover {
+    border-color: #5c5d69;
+}
+
+.message-file {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #383944;
+    border-radius: 10px;
+
+    background: #17181f;
+
+    color: #ffffff;
+
+    text-decoration: none;
+}
+
+.message-file:hover {
+    background: #22232c;
+    border-color: #5c5d69;
+}
+
+.message-file-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.message-file-info {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 2px;
+}
+
+.message-file-name {
+    max-width: 300px;
+
+    overflow: hidden;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-file-meta {
+    color: #aaa8b3;
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Full-size image viewer */
+
+.attachment-lightbox {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 30000;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px;
+
+    background: rgba(0, 0, 0, 0.88);
+}
+
+.attachment-lightbox.hidden {
+    display: none;
+}
+
+.attachment-lightbox img {
+    max-width: min(1100px, 94vw);
+    max-height: 90vh;
+
+    border-radius: 12px;
+
+    object-fit: contain;
+
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.8);
+}
+
+.attachment-lightbox-close {
+    position: absolute;
+
+    top: 20px;
+    right: 24px;
+
+    width: 42px;
+    height: 42px;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: #22232b;
+
+    color: #ffffff;
+
+    font-size: 28px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+.attachment-lightbox-close:hover {
+    background: #363741;
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+    .attachment-preview {
+        left: 12px;
+        right: 12px;
+
+        bottom: 76px;
+
+        max-width: none;
+    }
+
+    .message-image {
+        max-width: 100%;
+        max-height: 300px;
+    }
+
+    .attachment-lightbox {
+        padding: 20px;
+    }
+
+    .attachment-lightbox-close {
+        top: 10px;
+        right: 10px;
+    }
+}
