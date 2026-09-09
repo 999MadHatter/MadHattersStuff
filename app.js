@@ -43,6 +43,342 @@ let currentUser = {
 
 let viewedProfileUser = null;
 
+// ============================================================
+// CHAT ATTACHMENTS
+// ============================================================
+
+let pendingAttachment = null;
+const CHAT_ATTACHMENT_BUCKET = "chat-files";
+const CHAT_MAX_FILE_SIZE = 20 * 1024 * 1024;
+const CHAT_BLOCKED_EXTENSIONS = new Set([
+    "exe", "bat", "cmd", "com", "msi", "scr", "ps1", "vbs", "js", "html", "htm"
+]);
+
+function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes)) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function getFileExtension(name) {
+    const parts = String(name || "").toLowerCase().split(".");
+    return parts.length > 1 ? parts.pop() : "";
+}
+
+function isImageFile(file) {
+    return !!file && String(file.type || "").startsWith("image/");
+}
+
+function clearPendingAttachment() {
+    pendingAttachment = null;
+    const input = document.getElementById("attachmentInput");
+    if (input) input.value = "";
+    const preview = document.getElementById("attachmentPreview");
+    if (preview) {
+        preview.innerHTML = "";
+        preview.classList.add("hidden");
+    }
+}
+
+function showAttachmentPreview(file) {
+    const preview = document.getElementById("attachmentPreview");
+    if (!preview) return;
+
+    preview.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "attachment-preview-row";
+
+    if (isImageFile(file)) {
+        const img = document.createElement("img");
+        img.className = "attachment-preview-thumb";
+        img.alt = "Selected image";
+        img.src = URL.createObjectURL(file);
+        row.appendChild(img);
+    } else {
+        const icon = document.createElement("span");
+        icon.className = "attachment-preview-thumb";
+        icon.style.display = "flex";
+        icon.style.alignItems = "center";
+        icon.style.justifyContent = "center";
+        icon.textContent = "📎";
+        row.appendChild(icon);
+    }
+
+    const name = document.createElement("span");
+    name.className = "attachment-preview-name";
+    name.textContent = file.name + " · " + formatFileSize(file.size);
+    row.appendChild(name);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "attachment-remove";
+    remove.textContent = "×";
+    remove.title = "Remove attachment";
+    remove.addEventListener("click", clearPendingAttachment);
+    row.appendChild(remove);
+
+    preview.appendChild(row);
+    preview.classList.remove("hidden");
+}
+
+async function handleAttachmentSelection(file) {
+    if (!file) return;
+
+    if (!supabaseClient || !currentUser.id) {
+        alert("Please sign in before attaching a file.");
+        return;
+    }
+
+    if (file.size > CHAT_MAX_FILE_SIZE) {
+        alert("Files must be 20 MB or smaller.");
+        return;
+    }
+
+    const extension = getFileExtension(file.name);
+    if (CHAT_BLOCKED_EXTENSIONS.has(extension)) {
+        alert("That file type isn't allowed in chat.");
+        return;
+    }
+
+    pendingAttachment = file;
+    showAttachmentPreview(file);
+}
+
+async function uploadChatAttachment(file) {
+    const safeName = String(file.name || "file")
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .slice(0, 120);
+
+    const path = currentUser.id + "/" + Date.now() + "-" + crypto.randomUUID() + "-" + safeName;
+
+    const { error } = await supabaseClient.storage
+        .from(CHAT_ATTACHMENT_BUCKET)
+        .upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            cacheControl: "3600",
+            upsert: false
+        });
+
+    if (error) throw error;
+
+    return {
+        path,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size
+    };
+}
+
+async function getChatAttachmentUrl(path) {
+    if (!path || !supabaseClient) return "";
+
+    const { data, error } = await supabaseClient.storage
+        .from(CHAT_ATTACHMENT_BUCKET)
+        .createSignedUrl(path, 60 * 60);
+
+    if (error) {
+        console.error("CHAT ATTACHMENT URL ERROR:", error);
+        return "";
+    }
+
+    return data?.signedUrl || "";
+}
+
+function parseMessageContent(content) {
+    if (typeof content !== "string") return { text: "", attachment: null };
+
+    const prefix = "__AFTERHOURS_ATTACHMENT__:";
+    if (!content.startsWith(prefix)) return { text: content, attachment: null };
+
+    try {
+        const payload = JSON.parse(content.slice(prefix.length));
+        return {
+            text: payload.text || "",
+            attachment: payload.attachment || null
+        };
+    } catch (error) {
+        console.error("Invalid attachment message:", error);
+        return { text: content, attachment: null };
+    }
+}
+
+async function appendAttachmentToMessage(content, file) {
+    if (!file) return content;
+    const uploaded = await uploadChatAttachment(file);
+    return "__AFTERHOURS_ATTACHMENT__:" + JSON.stringify({
+        text: content,
+        attachment: uploaded
+    });
+}
+
+// ============================================================
+// REALTIME ONLINE PRESENCE
+// ============================================================
+
+let onlinePresenceChannel = null;
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+let notifications = [];
+let notificationsChannel = null;
+
+function notificationIcon(type) {
+    if (type === "dm") return "💬";
+    if (type === "friend_request") return "👥";
+    if (type === "mention") return "🏷️";
+    return "🔔";
+}
+
+function formatNotificationTime(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + "m ago";
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + "h ago";
+    const days = Math.floor(hours / 24);
+    return days + "d ago";
+}
+
+function renderNotifications() {
+    const list = get("notificationsList");
+    const badge = get("notificationBadge");
+    if (!list) return;
+    const unread = notifications.filter(n => !n.read);
+    if (badge) {
+        badge.textContent = unread.length > 99 ? "99+" : String(unread.length);
+        badge.classList.toggle("hidden", unread.length === 0);
+    }
+    list.innerHTML = "";
+    if (!notifications.length) {
+        const empty = document.createElement("div");
+        empty.className = "notification-empty";
+        empty.textContent = "You're all caught up.";
+        list.appendChild(empty);
+        return;
+    }
+    notifications.forEach(n => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "notification-item" + (n.read ? "" : " unread");
+        const icon = document.createElement("span");
+        icon.className = "notification-icon";
+        icon.textContent = notificationIcon(n.type);
+        const copy = document.createElement("span");
+        copy.className = "notification-copy";
+        const text = document.createElement("span");
+        text.className = "notification-text";
+        text.textContent = n.message || "You have a new notification.";
+        const time = document.createElement("span");
+        time.className = "notification-time";
+        time.textContent = formatNotificationTime(n.created_at);
+        copy.appendChild(text); copy.appendChild(time);
+        item.appendChild(icon); item.appendChild(copy);
+        item.addEventListener("click", () => handleNotificationClick(n));
+        list.appendChild(item);
+    });
+}
+
+async function loadNotifications() {
+    if (!supabaseClient || !currentUser.id) return;
+    const { data, error } = await supabaseClient
+        .from("notifications")
+        .select("id, recipient_id, actor_id, type, message, reference_id, read, created_at")
+        .eq("recipient_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+    if (error) { console.error("Unable to load notifications:", error); return; }
+    notifications = data || [];
+    renderNotifications();
+}
+
+function subscribeToNotifications() {
+    if (!supabaseClient || !currentUser.id || notificationsChannel) return;
+    notificationsChannel = supabaseClient
+        .channel("afterhours-notifications-" + currentUser.id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: "recipient_id=eq." + currentUser.id }, payload => {
+            if (!payload.new) return;
+            notifications = [payload.new, ...notifications.filter(n => n.id !== payload.new.id)].slice(0, 50);
+            renderNotifications();
+        })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: "recipient_id=eq." + currentUser.id }, payload => {
+            if (!payload.new) return;
+            notifications = notifications.map(n => n.id === payload.new.id ? payload.new : n);
+            renderNotifications();
+        })
+        .subscribe(status => {
+            consoleEvent("Notifications realtime: " + status, status === "CHANNEL_ERROR" ? "error" : "log");
+        });
+}
+
+async function markAllNotificationsRead() {
+    if (!supabaseClient || !currentUser.id) return;
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    if (!unreadIds.length) return;
+    const { error } = await supabaseClient.from("notifications").update({ read: true }).in("id", unreadIds);
+    if (error) { console.error("Unable to mark notifications read:", error); return; }
+    notifications = notifications.map(n => ({ ...n, read: true }));
+    renderNotifications();
+}
+
+async function markNotificationRead(id) {
+    if (!supabaseClient || !id) return;
+    const { error } = await supabaseClient.from("notifications").update({ read: true }).eq("id", id);
+    if (error) { console.error("Unable to mark notification read:", error); return; }
+    notifications = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    renderNotifications();
+}
+
+async function handleNotificationClick(notification) {
+    await markNotificationRead(notification.id);
+    if (notification.type === "dm" && notification.reference_id) {
+        const { data: conversation } = await supabaseClient
+            .from("dm_conversations")
+            .select("id, participant_one, participant_two")
+            .eq("id", notification.reference_id)
+            .maybeSingle();
+        if (conversation) {
+            const otherId = conversation.participant_one === currentUser.id ? conversation.participant_two : conversation.participant_one;
+            const { data: user } = await supabaseClient.from("profiles")
+                .select("id, username, display_name, bio, avatar_url, role")
+                .eq("id", otherId).maybeSingle();
+            if (user) {
+                toggleNotifications(false);
+                showMessagesView();
+                await openDmConversation(conversation.id, user);
+            }
+        }
+    }
+}
+
+function toggleNotifications(force) {
+    const panel = get("notificationsPanel");
+    const button = get("notificationsButton");
+    if (!panel || !button) return;
+    const open = typeof force === "boolean" ? force : panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !open);
+    button.setAttribute("aria-expanded", String(open));
+}
+
+async function stopNotificationsRealtime() {
+    if (!supabaseClient || !notificationsChannel) return;
+    try { await supabaseClient.removeChannel(notificationsChannel); } catch (err) { console.warn("Unable to remove notifications channel:", err); }
+    notificationsChannel = null;
+    notifications = [];
+    renderNotifications();
+}
+
+
+// Staff diagnostics console. This is a client-side diagnostics tool;
+// server-side permissions must remain the real security boundary.
+const consoleEntries = [];
+const MAX_CONSOLE_ENTRIES = 250;
+
 const rankDefinitions = {
     Owner: {
         icon: "👑",
@@ -51,6 +387,8 @@ const rankDefinitions = {
             "promote_users",
             "demote_users",
             "set_ranks",
+            "manage_ranks",
+            "view_staff_console",
             "create_rooms",
             "delete_rooms",
             "edit_any_room",
@@ -172,6 +510,253 @@ const STAFF_ROLES = [
     "Moderator",
     "Helper"
 ];
+
+
+// ============================================================
+// STAFF CONSOLE
+// ============================================================
+
+function addConsoleEntry(type, value) {
+
+    if (consoleEntries.length >= MAX_CONSOLE_ENTRIES) {
+        consoleEntries.shift();
+    }
+
+    let text = "";
+
+    try {
+        if (typeof value === "string") {
+            text = value;
+        } else if (value instanceof Error) {
+            text = value.stack || value.message || String(value);
+        } else {
+            text = JSON.stringify(value, null, 2);
+        }
+    } catch (_) {
+        text = String(value);
+    }
+
+    consoleEntries.push({
+        type,
+        text,
+        time: new Date().toLocaleTimeString()
+    });
+
+    renderConsoleEntries();
+}
+
+function consoleEvent(message, type = "log") {
+    addConsoleEntry(type, message);
+}
+
+function consoleUserEvent(action, user) {
+    const name =
+        user?.display_name ||
+        user?.username ||
+        user?.user_id ||
+        "Unknown user";
+
+    consoleEvent(
+        `User ${action}: ${name}`,
+        action === "left" ? "log" : "log"
+    );
+}
+
+function renderConsoleEntries() {
+
+    const output = get("consoleOutput");
+
+    if (!output) {
+        return;
+    }
+
+    output.innerHTML = "";
+
+    if (!consoleEntries.length) {
+        const empty = document.createElement("div");
+        empty.className = "console-entry log";
+        empty.textContent = "Console ready. No errors recorded yet.";
+        output.appendChild(empty);
+        return;
+    }
+
+    consoleEntries.forEach(function (entry) {
+
+        const row = document.createElement("div");
+        row.className = "console-entry " + entry.type;
+
+        const time = document.createElement("span");
+        time.className = "console-time";
+        time.textContent = "[" + entry.time + "] ";
+
+        const text = document.createElement("span");
+        text.textContent = entry.text;
+
+        row.appendChild(time);
+        row.appendChild(text);
+        output.appendChild(row);
+    });
+
+    output.scrollTop = output.scrollHeight;
+}
+
+function canUseStaffConsole() {
+    return STAFF_ROLES.includes(currentUser.role) ||
+        hasPermission("view_staff_console") ||
+        hasPermission("manage_staff") ||
+        hasPermission("manage_ranks");
+}
+
+function openStaffConsole() {
+
+    if (!canUseStaffConsole()) {
+        addConsoleEntry("warn", "Console access denied for this account.");
+        return false;
+    }
+
+    const panel = get("staffConsole");
+
+    if (!panel) {
+        return false;
+    }
+
+    panel.classList.remove("hidden");
+    panel.setAttribute("aria-hidden", "false");
+    renderConsoleEntries();
+
+    return true;
+}
+
+function closeStaffConsole() {
+
+    const panel = get("staffConsole");
+
+    if (!panel) {
+        return;
+    }
+
+    panel.classList.add("hidden");
+    panel.setAttribute("aria-hidden", "true");
+}
+
+function handleChatCommand(text) {
+
+    if (!text.startsWith("/")) {
+        return false;
+    }
+
+    const command =
+        text.trim().split(/\s+/)[0].toLowerCase();
+
+    if (command === "/console") {
+        consoleEvent(
+            "Staff console opened by " +
+            (currentUser.username || currentUser.displayName || "staff"),
+            "log"
+        );
+        openStaffConsole();
+        return true;
+    }
+
+    if (command === "/closeconsole") {
+        closeStaffConsole();
+        return true;
+    }
+
+    if (command === "/editor") {
+        openEditor();
+        return true;
+    }
+
+    if (command === "/closeeditor") {
+        closeEditor();
+        return true;
+    }
+
+    // Unknown slash commands are kept out of public chat for now.
+    // This gives us room to add /mute, /ban, etc. later without
+    // exposing command text as a normal message.
+    return false;
+}
+
+document.addEventListener("visibilitychange", function () {
+    consoleEvent(
+        document.hidden
+            ? "Browser tab became inactive."
+            : "Browser tab became active.",
+        "log"
+    );
+});
+
+
+function setupStaffConsole() {
+
+    const closeButton = get("closeConsoleButton");
+    const clearButton = get("clearConsoleButton");
+    const panel = get("staffConsole");
+
+    if (closeButton) {
+        closeButton.addEventListener("click", closeStaffConsole);
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener("click", function () {
+            consoleEntries.length = 0;
+            renderConsoleEntries();
+        });
+    }
+
+    if (panel) {
+        panel.addEventListener("click", function (event) {
+            if (event.target === panel) {
+                closeStaffConsole();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeStaffConsole();
+        }
+    });
+
+    window.addEventListener("error", function (event) {
+        addConsoleEntry(
+            "error",
+            event.error || event.message || "Unknown JavaScript error"
+        );
+    });
+
+    window.addEventListener("unhandledrejection", function (event) {
+        addConsoleEntry(
+            "error",
+            event.reason || "Unhandled promise rejection"
+        );
+    });
+}
+
+// Keep a diagnostics copy while still allowing the browser console to work.
+(function setupConsoleCapture() {
+
+    const originalError = console.error.bind(console);
+    const originalWarn = console.warn.bind(console);
+    const originalLog = console.log.bind(console);
+
+    console.error = function (...args) {
+        originalError(...args);
+        addConsoleEntry("error", args.map(String).join(" "));
+    };
+
+    console.warn = function (...args) {
+        originalWarn(...args);
+        addConsoleEntry("warn", args.map(String).join(" "));
+    };
+
+    console.log = function (...args) {
+        originalLog(...args);
+        addConsoleEntry("log", args.map(String).join(" "));
+    };
+})();
 
 
 // ============================================================
@@ -369,13 +954,14 @@ function applyRank(element, role) {
     element.className = element.className
         .split(" ")
         .filter(function (className) {
-            return !className.startsWith("rank-");
+            return !className.startsWith("rank-") && className !== "custom-rank";
         })
-        .concat(rank.className)
+        .concat(rank.className || "rank-member")
         .join(" ");
 
+    element.style.color = rank.color || "";
     element.textContent =
-        rank.icon + " " + (role || "Member");
+        (rank.icon || rank.badge || "🏷️") + " " + (role || "Member");
 }
 
 
@@ -476,7 +1062,11 @@ function showChat() {
     showRoomsSidebar();
 
     updateUser();
-    updateOnlineUsers();
+    startOnlinePresence();
+    loadNotifications();
+    subscribeToNotifications();
+    loadFriends();
+    subscribeToFriends();
 
     subscribeToRoomMessages();
     loadMessages();
@@ -496,11 +1086,11 @@ async function login() {
         return;
     }
 
-    const email = get("loginEmail").value.trim();
+    const loginIdentifier = get("loginEmail").value.trim();
     const password = get("loginPassword").value;
 
-    if (!email) {
-        alert("Please enter your email.");
+    if (!loginIdentifier) {
+        alert("Please enter your email or username.");
         return;
     }
 
@@ -516,17 +1106,62 @@ async function login() {
 
     try {
 
-        const { data, error } =
-            await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
+        let data;
+        let error;
+
+        // Supabase Auth natively accepts email/password, so usernames
+        // are resolved through the secure Edge Function instead of
+        // exposing auth emails to the browser.
+        if (loginIdentifier.includes("@")) {
+
+            ({ data, error } =
+                await supabaseClient.auth.signInWithPassword({
+                    email: loginIdentifier,
+                    password: password
+                }));
+
+        } else {
+
+            const result =
+                await supabaseClient.functions.invoke(
+                    "login-by-username",
+                    {
+                        body: {
+                            username: loginIdentifier,
+                            password: password
+                        }
+                    }
+                );
+
+            error = result.error;
+
+            if (!error && result.data?.session) {
+
+                const sessionResult =
+                    await supabaseClient.auth.setSession(
+                        result.data.session
+                    );
+
+                data = sessionResult.data;
+                error = sessionResult.error;
+
+            } else if (!error) {
+
+                error = new Error(
+                    result.data?.error ||
+                    "Username login failed."
+                );
+            }
+        }
 
         if (error) {
 
             console.error(error);
 
-            alert(error.message);
+            alert(
+                error.message ||
+                "Invalid username/email or password."
+            );
 
             return;
         }
@@ -607,6 +1242,8 @@ async function login() {
 
         updateUser();
 
+        await loadCustomRoles();
+        await loadCustomRooms();
         showChat();
 
     } catch (err) {
@@ -780,6 +1417,8 @@ async function register() {
 
 async function logout() {
 
+    await stopNotificationsRealtime();
+    await stopOnlinePresence();
     await stopRoomMessageRealtime();
     await stopDmRealtime();
 
@@ -987,7 +1626,222 @@ function updateUser() {
 }
 
 
-function updateOnlineUsers() {
+async function startOnlinePresence() {
+
+    if (
+        !supabaseClient ||
+        !currentUser.id
+    ) {
+        return;
+    }
+
+    // Prevent duplicate presence channels.
+    if (onlinePresenceChannel) {
+        return;
+    }
+
+    const channel =
+        supabaseClient.channel(
+            "afterhours-online",
+            {
+                config: {
+                    presence: {
+                        key: currentUser.id
+                    }
+                }
+            }
+        );
+
+    onlinePresenceChannel = channel;
+
+    const renderPresence =
+        function () {
+            const state =
+                channel.presenceState();
+
+            const users = [];
+
+            Object.keys(state).forEach(
+                function (key) {
+
+                    const entries =
+                        state[key] || [];
+
+                    entries.forEach(
+                        function (entry) {
+
+                            if (
+                                !entry ||
+                                !entry.user_id
+                            ) {
+                                return;
+                            }
+
+                            // Avoid duplicate users if the same
+                            // account has multiple presence metas.
+                            if (
+                                users.some(
+                                    function (existing) {
+                                        return (
+                                            existing.user_id ===
+                                            entry.user_id
+                                        );
+                                    }
+                                )
+                            ) {
+                                return;
+                            }
+
+                            users.push(entry);
+                        }
+                    );
+                }
+            );
+
+            // Keep the current user's own presence visible too.
+            updateOnlineUsers(users);
+        };
+
+    channel.on(
+        "presence",
+        {
+            event: "sync"
+        },
+        renderPresence
+    );
+
+    channel.on(
+        "presence",
+        {
+            event: "join"
+        },
+        function (payload) {
+            const joined = payload?.newPresences || [];
+            joined.forEach(function (entry) {
+                consoleUserEvent("joined", entry);
+            });
+            renderPresence();
+        }
+    );
+
+    channel.on(
+        "presence",
+        {
+            event: "leave"
+        },
+        function (payload) {
+            const left = payload?.leftPresences || [];
+            left.forEach(function (entry) {
+                consoleUserEvent("left", entry);
+            });
+            renderPresence();
+        }
+    );
+
+    const status =
+        await channel.subscribe(
+            async function (subscriptionStatus) {
+
+                if (
+                    subscriptionStatus !==
+                    "SUBSCRIBED"
+                ) {
+                    console.warn(
+                        "Online presence subscription status:",
+                        subscriptionStatus
+                    );
+                    consoleEvent(
+                        "Online presence status: " +
+                        subscriptionStatus,
+                        "warn"
+                    );
+                    return;
+                }
+
+                consoleEvent(
+                    "Online presence connected.",
+                    "log"
+                );
+
+                await channel.track({
+                    user_id:
+                        currentUser.id,
+
+                    username:
+                        currentUser.username,
+
+                    display_name:
+                        currentUser.displayName,
+
+                    avatar_url:
+                        currentUser.avatarUrl,
+                    bio:
+                        currentUser.bio,
+                    role:
+                        currentUser.role
+                });
+
+                renderPresence();
+            }
+        );
+
+    if (
+        status !== "SUBSCRIBED"
+    ) {
+        console.warn(
+            "Unable to subscribe to online presence:",
+            status
+        );
+    }
+}
+
+
+async function stopOnlinePresence() {
+
+    if (
+        !supabaseClient ||
+        !onlinePresenceChannel
+    ) {
+        onlinePresenceChannel = null;
+        updateOnlineUsers([]);
+        return;
+    }
+
+    try {
+
+        await onlinePresenceChannel.untrack();
+
+    } catch (err) {
+
+        console.warn(
+            "Unable to untrack online presence:",
+            err
+        );
+    }
+
+    try {
+
+        await supabaseClient.removeChannel(
+            onlinePresenceChannel
+        );
+
+    } catch (err) {
+
+        console.warn(
+            "Unable to remove online presence channel:",
+            err
+        );
+    }
+
+    onlinePresenceChannel = null;
+
+    updateOnlineUsers([]);
+}
+
+
+function updateOnlineUsers(
+    onlineUsers
+) {
 
     const container =
         get("onlineUsers");
@@ -998,74 +1852,112 @@ function updateOnlineUsers() {
 
     container.innerHTML = "";
 
-    const user =
-        document.createElement("div");
+    const users =
+        Array.isArray(onlineUsers)
+            ? onlineUsers
+            : [];
 
-    user.className =
-        "online-user";
+    users.forEach(
+        function (onlineUser) {
 
-    user.tabIndex =
-        0;
+            const user =
+                document.createElement("div");
 
-    user.setAttribute(
-        "role",
-        "button"
-    );
+            user.className =
+                "online-user";
 
-    user.addEventListener(
-        "click",
-        openProfile
-    );
+            user.tabIndex =
+                0;
 
-    user.addEventListener(
-        "keydown",
-        function (event) {
+            user.setAttribute(
+                "role",
+                "button"
+            );
 
-            if (
-                event.key === "Enter" ||
-                event.key === " "
-            ) {
+            user.addEventListener(
+                "click",
+                function () {
 
-                event.preventDefault();
+                    // Presence payloads use snake_case, while the
+                    // rest of Afterhours profiles use camelCase.
+                    // Normalize the presence user before opening
+                    // the profile modal so avatars, roles, bios,
+                    // and the owner/staff controls still work.
+                    openUserProfile({
+                        id: onlineUser.user_id || onlineUser.id,
+                        username: onlineUser.username || "user",
+                        displayName:
+                            onlineUser.display_name ||
+                            onlineUser.displayName ||
+                            onlineUser.username ||
+                            "User",
+                        bio: onlineUser.bio || "No bio yet.",
+                        avatarUrl:
+                            onlineUser.avatar_url ||
+                            onlineUser.avatarUrl ||
+                            "",
+                        role: onlineUser.role || "member"
+                    });
 
-                openProfile();
-            }
+                }
+            );
+
+            user.addEventListener(
+                "keydown",
+                function (event) {
+
+                    if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                    ) {
+
+                        event.preventDefault();
+
+                        openUserProfile(
+                            onlineUser
+                        );
+                    }
+                }
+            );
+
+            const dot =
+                document.createElement("span");
+
+            dot.className =
+                "status-dot";
+
+            const avatar =
+                document.createElement("span");
+
+            avatar.className =
+                "avatar";
+
+            updateAvatar(
+                avatar,
+
+                onlineUser.display_name ||
+                onlineUser.username ||
+                "User",
+
+                onlineUser.avatar_url ||
+                ""
+            );
+
+            const name =
+                document.createElement("span");
+
+            name.textContent =
+                onlineUser.display_name ||
+                onlineUser.username ||
+                "User";
+
+            user.appendChild(dot);
+            user.appendChild(avatar);
+            user.appendChild(name);
+
+            container.appendChild(user);
         }
     );
-
-    const dot =
-        document.createElement("span");
-
-    dot.className =
-        "status-dot";
-
-    const avatar =
-        document.createElement("span");
-
-    avatar.className =
-        "avatar";
-
-    updateAvatar(
-        avatar,
-        currentUser.displayName ||
-        currentUser.username ||
-        "User",
-        currentUser.avatarUrl
-    );
-
-    const name =
-        document.createElement("span");
-
-    name.textContent =
-        currentUser.displayName ||
-        currentUser.username ||
-        "User";
-
-    user.appendChild(dot);
-    user.appendChild(avatar);
-    user.appendChild(name);
-
-    container.appendChild(user);
 }
 
 
@@ -1100,9 +1992,14 @@ function openUserProfile(user) {
             "@" +
             (user.username || "user");
 
+        // Always resolve the target's effective rank (including Owner).
+        // This prevents an Owner profile from being displayed as Member when
+        // the stored profiles.role value is stale or generic.
+        const effectiveProfileRole = getEffectiveRole(user, user);
+
         applyRank(
             get("profileRole"),
-            user.role
+            effectiveProfileRole
         );
 
         get("profileBio").textContent =
@@ -1116,11 +2013,13 @@ function openUserProfile(user) {
         );
 
         modal.dataset.rank =
-            String(user.role || "member")
+            String(effectiveProfileRole || "member")
                 .toLowerCase();
 
         const isOwnProfile =
             user.id === currentUser.id;
+
+        updateProfileFriendButton(user.id);
 
         get("editProfileButton").classList.toggle(
             "hidden",
@@ -1169,7 +2068,14 @@ function renderPermissionPanel(user) {
         return;
     }
 
-    if (!STAFF_ROLES.includes(currentUser.role)) {
+    if (!STAFF_ROLES.includes(currentUser.role) &&
+        !hasPermission("manage_staff") &&
+        !hasPermission("set_ranks") &&
+        !hasPermission("ban_users") &&
+        !hasPermission("mute_users") &&
+        !hasPermission("kick_users") &&
+        !hasPermission("warn_users") &&
+        !hasPermission("delete_any_message")) {
 
         panel.classList.add("hidden");
         panel.innerHTML = "";
@@ -1180,8 +2086,10 @@ function renderPermissionPanel(user) {
     const viewerLevel =
         ROLE_LEVELS[currentUser.role] ?? 0;
 
+    const effectiveTargetRole = getEffectiveRole(user, user);
+
     const targetLevel =
-        ROLE_LEVELS[user.role] ?? 0;
+        ROLE_LEVELS[effectiveTargetRole] ?? 0;
 
     if (targetLevel >= viewerLevel) {
 
@@ -1192,7 +2100,7 @@ function renderPermissionPanel(user) {
     }
 
     const availableActions =
-        MODERATION_ACTIONS[currentUser.role] || [];
+        MODERATION_ACTIONS[currentUser.role] || CUSTOM_MODERATION_ACTIONS;
 
     const allowedActions =
         availableActions.filter(
@@ -2060,6 +2968,7 @@ async function checkModerationStatus() {
             "Your account is currently banned."
         );
 
+        await stopOnlinePresence();
         await stopRoomMessageRealtime();
         await stopDmRealtime();
 
@@ -2102,6 +3011,7 @@ async function checkModerationStatus() {
             "You have been kicked from Afterhours."
         );
 
+        await stopOnlinePresence();
         await stopRoomMessageRealtime();
         await stopDmRealtime();
 
@@ -2618,7 +3528,25 @@ async function saveProfile() {
 
     updateUser();
 
-    updateOnlineUsers();
+    if (onlinePresenceChannel) {
+        try {
+            await onlinePresenceChannel.track({
+                user_id:
+                    currentUser.id,
+                username:
+                    currentUser.username,
+                display_name:
+                    currentUser.displayName,
+                avatar_url:
+                    currentUser.avatarUrl
+            });
+        } catch (err) {
+            console.warn(
+                "Unable to refresh online presence:",
+                err
+            );
+        }
+    }
 
     closeEditProfile();
 
@@ -2727,6 +3655,11 @@ function updateRealtimeStatus(status) {
 
     if (status === "SUBSCRIBED") {
 
+        consoleEvent(
+            "Supabase realtime connected.",
+            "log"
+        );
+
         indicator.textContent =
             "🟢 Realtime Connected";
 
@@ -2736,6 +3669,11 @@ function updateRealtimeStatus(status) {
     } else if (
         status === "CHANNEL_ERROR"
     ) {
+
+        consoleEvent(
+            "Supabase realtime channel error.",
+            "error"
+        );
 
         indicator.textContent =
             "🔴 Realtime Error";
@@ -2747,6 +3685,11 @@ function updateRealtimeStatus(status) {
         status === "TIMED_OUT"
     ) {
 
+        consoleEvent(
+            "Supabase realtime connection timed out.",
+            "warn"
+        );
+
         indicator.textContent =
             "🟠 Realtime Timed Out";
 
@@ -2756,6 +3699,11 @@ function updateRealtimeStatus(status) {
     } else if (
         status === "CLOSED"
     ) {
+
+        consoleEvent(
+            "Supabase realtime disconnected.",
+            "warn"
+        );
 
         indicator.textContent =
             "🔴 Realtime Disconnected";
@@ -3586,11 +4534,69 @@ function renderMessage(
         );
 
 
+    const parsedContent =
+        parseMessageContent(message.content);
+
     const textElement =
         document.createElement("p");
 
     textElement.textContent =
-        message.content;
+        parsedContent.text;
+
+    if (parsedContent.attachment) {
+        const attachmentWrap = document.createElement("div");
+        attachmentWrap.className = "message-attachment";
+
+        if (parsedContent.attachment.type && parsedContent.attachment.type.startsWith("image/")) {
+            const image = document.createElement("img");
+            image.className = "message-image";
+            image.alt = parsedContent.attachment.name || "Image attachment";
+            image.loading = "lazy";
+            image.dataset.attachmentPath = parsedContent.attachment.path || "";
+            image.addEventListener("click", () => {
+                if (image.src) window.open(image.src, "_blank", "noopener,noreferrer");
+            });
+            getChatAttachmentUrl(parsedContent.attachment.path).then(url => {
+                if (url) image.src = url;
+            });
+            attachmentWrap.appendChild(image);
+        } else {
+            const link = document.createElement("a");
+            link.className = "message-file";
+            link.href = "#";
+            link.innerHTML = "";
+
+            const icon = document.createElement("span");
+            icon.className = "message-file-icon";
+            icon.textContent = "📎";
+
+            const info = document.createElement("span");
+            info.className = "message-file-info";
+
+            const fileName = document.createElement("div");
+            fileName.className = "message-file-name";
+            fileName.textContent = parsedContent.attachment.name || "Attached file";
+
+            const meta = document.createElement("div");
+            meta.className = "message-file-meta";
+            meta.textContent = formatFileSize(parsedContent.attachment.size || 0);
+
+            info.appendChild(fileName);
+            info.appendChild(meta);
+            link.appendChild(icon);
+            link.appendChild(info);
+
+            link.addEventListener("click", async event => {
+                event.preventDefault();
+                const url = await getChatAttachmentUrl(parsedContent.attachment.path);
+                if (url) window.open(url, "_blank", "noopener,noreferrer");
+            });
+
+            attachmentWrap.appendChild(link);
+        }
+
+        content.appendChild(attachmentWrap);
+    }
 
 
     header.appendChild(
@@ -3614,9 +4620,11 @@ function renderMessage(
         header
     );
 
-    content.appendChild(
-        textElement
-    );
+    if (parsedContent.text) {
+        content.appendChild(
+            textElement
+        );
+    }
 
 
     messageElement.appendChild(
@@ -3973,9 +4981,13 @@ async function sendMessage() {
     const text =
         input.value.trim();
 
+    if (text && handleChatCommand(text)) {
+        input.value = "";
+        return;
+    }
 
     if (
-        !text ||
+        (!text && !pendingAttachment) ||
         !supabaseClient ||
         !currentUser.id
     ) {
@@ -4016,6 +5028,12 @@ async function sendMessage() {
 
     try {
 
+        const messageContent =
+            await appendAttachmentToMessage(
+                text,
+                pendingAttachment
+            );
+
         const {
             data: message,
             error
@@ -4027,7 +5045,7 @@ async function sendMessage() {
                     currentRoom,
 
                 message_content:
-                    text
+                    messageContent
             }
         );
 
@@ -4050,6 +5068,7 @@ async function sendMessage() {
         input.value =
             "";
 
+        clearPendingAttachment();
 
         renderMessage(
             message,
@@ -5899,6 +6918,171 @@ async function changeRoom(
 }
 
 
+
+
+/* FRIENDS v0.6 FIXED LOGIC */
+let friendsCache = [];
+let friendRequestsCache = [];
+let friendsRealtimeChannel = null;
+
+async function sendFriendRequest(targetUserId) {
+    if (!supabaseClient || !currentUser.id || !targetUserId || targetUserId === currentUser.id) return;
+    const { data: existing, error: checkError } = await supabaseClient.from("friend_requests").select("id,status,sender_id,receiver_id").or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`).in("status", ["pending","accepted"]).limit(1).maybeSingle();
+    if (checkError) { console.error("Friend request check failed:", checkError); alert("Couldn't check friendship status."); return; }
+    if (existing?.status === "accepted") { alert("You're already friends."); return; }
+    if (existing?.status === "pending") { alert(existing.sender_id === currentUser.id ? "Friend request already sent." : "This user already sent you a friend request."); return; }
+    const { error } = await supabaseClient.from("friend_requests").insert({ sender_id: currentUser.id, receiver_id: targetUserId, status: "pending" });
+    if (error) { console.error("Friend request failed:", error); alert("Couldn't send the friend request."); return; }
+    await updateProfileFriendButton(targetUserId);
+}
+
+async function respondToFriendRequest(requestId, accept) {
+    if (!supabaseClient || !currentUser.id) return;
+    const { error } = await supabaseClient.from("friend_requests").update({ status: accept ? "accepted" : "declined", responded_at: new Date().toISOString() }).eq("id", requestId).eq("receiver_id", currentUser.id).eq("status", "pending");
+    if (error) { console.error("Friend request response failed:", error); alert("Couldn't update the friend request."); return; }
+    await loadFriends();
+}
+
+async function loadFriends() {
+    if (!supabaseClient || !currentUser.id) return;
+    const { data, error } = await supabaseClient.from("friend_requests").select("*").or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).in("status", ["pending","accepted"]).order("created_at", { ascending:false }).limit(200);
+    if (error) { console.error("Friends load failed:", error); return; }
+    const rows=data||[];
+    // Determine the OTHER account in every relationship. Never treat a
+    // malformed/self relationship as a friend of the logged-in user.
+    const getOtherId = (r) => r.sender_id === currentUser.id ? r.receiver_id : r.sender_id;
+    const ids=[...new Set(rows.map(getOtherId).filter(id => id && id !== currentUser.id))];
+    let profiles=[];
+    if(ids.length){
+        const result=await supabaseClient
+            .from("profiles")
+            .select("id,username,display_name,bio,avatar_url,role")
+            .in("id",ids);
+        if (result.error) console.error("Friends profiles load failed:", result.error);
+        profiles=result.data||[];
+    }
+    const map=new Map(profiles.map(p=>[p.id,p]));
+    friendsCache=rows
+        .filter(r=>r.status==="accepted")
+        .map(r=>({...r, other_id:getOtherId(r), profile:map.get(getOtherId(r))}))
+        .filter(r=>r.other_id && r.other_id !== currentUser.id && r.profile);
+    friendRequestsCache=rows
+        .filter(r=>r.status==="pending"&&r.receiver_id===currentUser.id)
+        .map(r=>({...r,profile:map.get(r.sender_id)}))
+        .filter(r=>r.profile);
+    renderFriends(); renderFriendRequests();
+    const badge=get("friendRequestBadge"), count=get("friendsTabRequestCount");
+    if(badge){badge.textContent=friendRequestsCache.length>99?"99+":String(friendRequestsCache.length); badge.classList.toggle("hidden",friendRequestsCache.length===0);}
+    if(count) count.textContent=friendRequestsCache.length?`(${friendRequestsCache.length})`:"";
+}
+
+function renderFriends(){
+    const list = get("friendsList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    if (!friendsCache.length) {
+        list.innerHTML = '<div class="friends-empty">No friends yet.</div>';
+        return;
+    }
+
+    friendsCache.forEach(r => {
+        const p = r.profile;
+        const item = document.createElement("div");
+        item.className = "friend-row";
+
+        const av = document.createElement("span");
+        av.className = "avatar";
+        updateAvatar(av, p.display_name || p.username || "User", p.avatar_url || "");
+
+        const info = document.createElement("div");
+        info.className = "friend-row-info";
+        info.innerHTML = '<div class="friend-row-name"></div><div class="friend-row-username"></div>';
+        info.children[0].textContent = p.display_name || p.username || "User";
+        info.children[1].textContent = p.username ? `@${p.username}` : "";
+
+        const user = {
+            id: p.id,
+            username: p.username,
+            displayName: p.display_name,
+            bio: p.bio,
+            avatarUrl: p.avatar_url,
+            role: getEffectiveRole(p, p)
+        };
+
+        const actions = document.createElement("div");
+        actions.className = "friend-row-actions";
+
+        const profileBtn = document.createElement("button");
+        profileBtn.type = "button";
+        profileBtn.className = "friend-action";
+        profileBtn.textContent = "Profile";
+        profileBtn.onclick = async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Friends must close before the real profile opens.
+            toggleFriends(false);
+
+            // p.id is the OTHER user's auth/profile UUID. Fetch that exact
+            // record so the profile modal cannot accidentally use currentUser.
+            let actualUser = {
+                id: p.id,
+                username: p.username || "user",
+                displayName: p.display_name || p.username || "User",
+                bio: p.bio || "No bio yet.",
+                avatarUrl: p.avatar_url || "",
+                role: getEffectiveRole(p, p)
+            };
+
+            if (p.id && p.id !== currentUser.id) {
+                const result = await supabaseClient
+                    .from("profiles")
+                    .select("id,username,display_name,bio,avatar_url,role")
+                    .eq("id", p.id)
+                    .maybeSingle();
+
+                if (result.data) {
+                    actualUser = {
+                        id: result.data.id,
+                        username: result.data.username,
+                        displayName: result.data.display_name || result.data.username || "User",
+                        bio: result.data.bio || "No bio yet.",
+                        avatarUrl: result.data.avatar_url || "",
+                        role: getEffectiveRole(result.data, result.data)
+                    };
+                } else if (result.error) {
+                    console.error("Friend profile lookup failed:", result.error);
+                }
+            }
+
+            openUserProfile(actualUser);
+        };
+
+        const messageBtn = document.createElement("button");
+        messageBtn.type = "button";
+        messageBtn.className = "friend-action friend-message-action";
+        messageBtn.textContent = "💬 Message";
+        messageBtn.onclick = async () => {
+            toggleFriends(false);
+            showMessagesView();
+            await openDmWithUser(user);
+        };
+
+        actions.append(profileBtn, messageBtn);
+        item.append(av, info, actions);
+        list.appendChild(item);
+    });
+}
+
+function renderFriendRequests(){ const list=get("friendRequestsList"); if(!list)return; list.innerHTML=""; if(!friendRequestsCache.length){list.innerHTML='<div class="friends-empty">No pending requests.</div>';return;} friendRequestsCache.forEach(r=>{const p=r.profile,item=document.createElement("div");item.className="friend-row";const av=document.createElement("span");av.className="avatar";updateAvatar(av,p.display_name||p.username||"User",p.avatar_url||"");const info=document.createElement("div");info.className="friend-row-info";info.innerHTML=`<div class="friend-row-name"></div><div class="friend-row-username"></div>`;info.children[0].textContent=p.display_name||p.username||"User";info.children[1].textContent=p.username?`@${p.username}`:"";const actions=document.createElement("div");actions.className="friend-row-actions";const a=document.createElement("button");a.type="button";a.className="friend-action accept";a.textContent="Accept";a.onclick=()=>respondToFriendRequest(r.id,true);const d=document.createElement("button");d.type="button";d.className="friend-action decline";d.textContent="Decline";d.onclick=()=>respondToFriendRequest(r.id,false);actions.append(a,d);item.append(av,info,actions);list.appendChild(item);});}
+
+function toggleFriends(force){ const panel=get("friendsPanel"), overlay=get("friendsOverlay"), button=get("friendsButton"); if(!panel||!overlay)return; const open=typeof force==="boolean"?force:panel.classList.contains("hidden"); panel.classList.toggle("hidden",!open); overlay.classList.toggle("hidden",!open); panel.setAttribute("aria-hidden",String(!open)); if(button)button.setAttribute("aria-expanded",String(open)); if(open){loadFriends();} }
+
+async function updateProfileFriendButton(targetUserId){ const button=get("profileFriendButton"); if(!button)return; const own=targetUserId===currentUser.id; button.classList.toggle("hidden",own); if(own)return; button.disabled=false; button.textContent="👥 Add Friend"; button.onclick=()=>sendFriendRequest(targetUserId); const {data,error}=await supabaseClient.from("friend_requests").select("id,status,sender_id,receiver_id").or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`).in("status",["pending","accepted"]).limit(1).maybeSingle(); if(error)return; if(data?.status==="accepted"){button.textContent="✓ Friends";button.disabled=true;} else if(data?.status==="pending"){if(data.sender_id===currentUser.id){button.textContent="✓ Request Sent";button.disabled=true;}else{button.textContent="👥 Accept Request";button.onclick=async()=>{await respondToFriendRequest(data.id,true);await updateProfileFriendButton(targetUserId);};}} }
+
+function subscribeToFriends(){ if(!supabaseClient||!currentUser.id||friendsRealtimeChannel)return; friendsRealtimeChannel=supabaseClient.channel("afterhours-friends-"+currentUser.id).on("postgres_changes",{event:"*",schema:"public",table:"friend_requests",filter:"sender_id=eq."+currentUser.id},loadFriends).on("postgres_changes",{event:"*",schema:"public",table:"friend_requests",filter:"receiver_id=eq."+currentUser.id},loadFriends).subscribe(); }
+
 // ============================================================
 // SETUP BUTTONS
 // ============================================================
@@ -6070,6 +7254,29 @@ function setupButtons() {
             toggleDmList
         );
 
+    const notificationsButton = get("notificationsButton");
+    if (notificationsButton) {
+        notificationsButton.addEventListener("click", function () {
+            toggleNotifications();
+        });
+    }
+
+    // Friends controls are bound separately below so they still work even if
+    // an optional setup control fails earlier in this large initializer.
+    document.querySelectorAll(".friends-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            document.querySelectorAll(".friends-tab").forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            get("friendsList")?.classList.toggle("hidden", tab.dataset.friendsTab !== "friends");
+            get("friendRequestsList")?.classList.toggle("hidden", tab.dataset.friendsTab !== "requests");
+        });
+    });
+
+    const markNotificationsReadButton = get("markNotificationsRead");
+    if (markNotificationsReadButton) {
+        markNotificationsReadButton.addEventListener("click", markAllNotificationsRead);
+    }
+
 
     const messagesBackButton =
         get("messagesBackButton");
@@ -6170,6 +7377,28 @@ function setupButtons() {
                 sendMessage();
             }
         );
+
+
+    // --------------------------------------------------------
+    // Chat attachments
+    // --------------------------------------------------------
+
+    const attachmentButton =
+        get("attachmentButton");
+
+    const attachmentInput =
+        get("attachmentInput");
+
+    if (attachmentButton && attachmentInput) {
+        attachmentButton.addEventListener("click", function () {
+            attachmentInput.click();
+        });
+
+        attachmentInput.addEventListener("change", function (event) {
+            const file = event.target.files && event.target.files[0];
+            handleAttachmentSelection(file);
+        });
+    }
 
 
     // --------------------------------------------------------
@@ -6315,7 +7544,8 @@ async function checkSession() {
                 false
         };
 
-
+        await loadCustomRoles();
+        await loadCustomRooms();
         showChat();
 
 
@@ -6332,11 +7562,548 @@ async function checkSession() {
 
 
 // ============================================================
+// CUSTOM RANK + ROOM EDITOR
+// ============================================================
+
+const CUSTOM_MODERATION_ACTIONS = [
+    { id:"mute", label:"🔇 Mute", permission:"mute_users" },
+    { id:"kick", label:"👢 Kick", permission:"kick_users" },
+    { id:"ban", label:"🔨 Ban", permission:"ban_users" },
+    { id:"warn", label:"⚠️ Warn", permission:"warn_users" },
+    { id:"restrict", label:"🚫 Restrict", permission:"restrict_users" },
+    { id:"delete_messages", label:"🗑️ Delete Messages", permission:"delete_any_message" },
+    { id:"change_role", label:"🛡️ Change Role", permission:"set_ranks" }
+];
+
+const EDITOR_PERMISSION_CATALOG = [
+    ["chat", "Chat"],
+    ["send_messages", "Send messages"],
+    ["manage_own_profile", "Manage own profile"],
+    ["upload_profile_picture", "Upload profile picture"],
+    ["join_rooms", "Join rooms"],
+    ["create_rooms", "Create rooms"],
+    ["manage_rooms", "Manage rooms"],
+    ["edit_any_room", "Edit any room"],
+    ["delete_rooms", "Delete rooms"],
+    ["manage_room_permissions", "Manage room permissions"],
+    ["manage_staff", "Manage staff"],
+    ["set_ranks", "Assign ranks"],
+    ["manage_ranks", "Create/edit ranks"],
+    ["view_staff_console", "View staff console"],
+    ["ban_users", "Ban users"],
+    ["unban_users", "Unban users"],
+    ["mute_users", "Mute users"],
+    ["unmute_users", "Unmute users"],
+    ["kick_users", "Kick users"],
+    ["warn_users", "Warn users"],
+    ["restrict_users", "Restrict users"],
+    ["delete_any_message", "Delete any message"],
+    ["handle_reports", "Handle reports"],
+    ["handle_serious_reports", "Handle serious reports"],
+    ["manage_conversations", "Manage conversations"],
+    ["manage_site_settings", "Manage site settings"],
+    ["vip_badge", "VIP badge"],
+    ["vip_name_color", "VIP name color"],
+    ["og_badge", "OG badge"]
+];
+
+let editorRoles = [];
+let editorRooms = [];
+let editorSelectedRoleId = null;
+
+function editorCanOpen() {
+    return currentUser?.id && (hasPermission("manage_ranks") || hasPermission("create_rooms"));
+}
+
+async function loadCustomRoles() {
+    if (!supabaseClient || !currentUser?.id) return;
+    const { data, error } = await supabaseClient
+        .from("afterhours_roles")
+        .select("id,name,color,badge,priority,permissions,is_system")
+        .order("priority", { ascending: false });
+    if (error) {
+        if (!String(error.code || "").startsWith("PGRST") && error.code !== "42P01") console.warn("Custom ranks unavailable:", error);
+        return;
+    }
+    editorRoles = data || [];
+    editorRoles.forEach(role => {
+        rankDefinitions[role.name] = {
+            icon: role.badge || "🏷️",
+            className: role.is_system ? (rankDefinitions[role.name]?.className || "rank-member") : "custom-rank",
+            permissions: Array.isArray(role.permissions) ? role.permissions : [],
+            color: role.color || "#ffffff",
+            badge: role.badge || "🏷️"
+        };
+        ROLE_LEVELS[role.name] = Number(role.priority) || 0;
+    });
+}
+
+async function loadEditorRooms() {
+    if (!supabaseClient || !currentUser?.id) return;
+    const { data, error } = await supabaseClient
+        .from("afterhours_rooms")
+        .select("id,name,description,visibility,created_by")
+        .order("created_at", { ascending: true });
+    if (!error) editorRooms = data || [];
+}
+
+function closeEditor() {
+    const modal = get("editorModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+}
+
+function openEditor() {
+    if (!editorCanOpen()) {
+        alert("You do not have permission to open the Editor.");
+        return false;
+    }
+    const modal = get("editorModal");
+    if (!modal) return false;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    loadEditorData();
+    return true;
+}
+
+async function loadEditorData() {
+    await Promise.all([loadCustomRoles(), loadEditorRooms(), loadCustomRooms()]);
+    renderEditorRoles();
+    renderEditorRooms();
+    if (!editorSelectedRoleId && editorRoles.length) editorSelectedRoleId = editorRoles[0].id;
+    renderEditorRoleForm();
+}
+
+function renderEditorRoles() {
+    const list = get("editorRoleList");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!editorRoles.length) {
+        list.innerHTML = '<div class="editor-empty">No ranks loaded. Run custom_editor.sql in Supabase.</div>';
+        return;
+    }
+    editorRoles.forEach(role => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "editor-role-item" + (role.id === editorSelectedRoleId ? " active" : "");
+        const dot = document.createElement("span");
+        dot.className = "editor-role-dot";
+        dot.style.background = role.color || "#fff";
+        const text = document.createElement("span");
+        text.textContent = `${role.badge || "🏷️"} ${role.name}`;
+        button.append(dot, text);
+        button.addEventListener("click", () => { editorSelectedRoleId = role.id; renderEditorRoles(); renderEditorRoleForm(); });
+        list.appendChild(button);
+    });
+}
+
+function renderEditorRoleForm() {
+    const role = editorRoles.find(r => r.id === editorSelectedRoleId);
+    const form = get("editorRoleForm");
+    if (!form) return;
+    form.innerHTML = "";
+    if (!role) { form.innerHTML = '<div class="editor-empty">Select a rank to edit.</div>'; return; }
+
+    const heading = document.createElement("div"); heading.className = "editor-form-heading"; heading.textContent = "Edit rank"; form.appendChild(heading);
+    const fields = document.createElement("div"); fields.className = "editor-fields";
+    const name = editorInput("Name", "editorRankName", role.name, "text", role.is_system && role.name === "Owner");
+    const color = editorInput("Color", "editorRankColor", role.color || "#ffffff", "color", false);
+    const badge = editorInput("Badge", "editorRankBadge", role.badge || "🏷️", "text", false);
+    const priority = editorInput("Priority", "editorRankPriority", String(role.priority ?? 0), "number", false);
+    fields.append(name, color, badge, priority); form.appendChild(fields);
+
+    const label = document.createElement("div"); label.className = "editor-section-label"; label.textContent = "Permissions"; form.appendChild(label);
+    const permissions = document.createElement("div"); permissions.className = "editor-permission-grid";
+    const selected = new Set(Array.isArray(role.permissions) ? role.permissions : []);
+    EDITOR_PERMISSION_CATALOG.forEach(([key, title]) => {
+        const wrap = document.createElement("label"); wrap.className = "editor-permission";
+        const cb = document.createElement("input"); cb.type = "checkbox"; cb.dataset.permission = key; cb.checked = selected.has(key);
+        const span = document.createElement("span"); span.textContent = title; wrap.append(cb, span); permissions.appendChild(wrap);
+    });
+    form.appendChild(permissions);
+
+    const actions = document.createElement("div"); actions.className = "editor-form-actions";
+    const save = document.createElement("button"); save.type = "button"; save.className = "primary-button"; save.textContent = "Save Rank"; save.onclick = () => saveEditorRole(role.id);
+    const del = document.createElement("button"); del.type = "button"; del.className = "secondary-button"; del.textContent = role.is_system ? "Built-in Rank" : "Delete Rank"; del.disabled = role.is_system; if (!role.is_system) del.onclick = () => deleteEditorRole(role.id);
+    actions.append(save, del); form.appendChild(actions);
+}
+
+function editorInput(labelText, id, value, type, disabled) {
+    const wrap = document.createElement("label"); wrap.className = "editor-field";
+    const label = document.createElement("span"); label.textContent = labelText;
+    const input = document.createElement("input"); input.id = id; input.type = type; input.value = value; input.disabled = !!disabled;
+    wrap.append(label, input); return wrap;
+}
+
+async function saveEditorRole(id) {
+    const role = editorRoles.find(r => r.id === id); if (!role) return;
+    const permissions = [...document.querySelectorAll("#editorRoleForm input[type=checkbox]:checked")].map(x => x.dataset.permission);
+    const payload = { p_id:id, p_name:get("editorRankName")?.value?.trim(), p_color:get("editorRankColor")?.value || "#ffffff", p_badge:get("editorRankBadge")?.value || "🏷️", p_priority:Number(get("editorRankPriority")?.value || 0), p_permissions:permissions };
+    const { data, error } = await supabaseClient.rpc("afterhours_editor_save_role", payload);
+    if (error) { console.error("Rank save failed:", error); alert(error.message || "Unable to save rank."); return; }
+    editorSelectedRoleId = data.id; await loadCustomRoles(); renderEditorRoles(); renderEditorRoleForm(); alert("Rank saved.");
+}
+
+async function createEditorRole() {
+    if (!editorCanOpen()) return;
+    const { data, error } = await supabaseClient.rpc("afterhours_editor_save_role", { p_id:null, p_name:"New Rank", p_color:"#ffffff", p_badge:"🏷️", p_priority:5, p_permissions:["chat","send_messages","join_rooms"] });
+    if (error) { console.error("Rank creation failed:", error); alert(error.message || "Unable to create rank."); return; }
+    await loadCustomRoles(); editorSelectedRoleId = data.id; renderEditorRoles(); renderEditorRoleForm();
+}
+
+async function deleteEditorRole(id) {
+    if (!confirm("Delete this custom rank? Users with it will become Member.")) return;
+    const { error } = await supabaseClient.rpc("afterhours_editor_delete_role", { p_id:id });
+    if (error) { console.error("Rank delete failed:", error); alert(error.message || "Unable to delete rank."); return; }
+    editorSelectedRoleId = null; await loadCustomRoles(); renderEditorRoles(); renderEditorRoleForm();
+}
+
+async function loadCustomRooms() {
+    if (!supabaseClient || !currentUser?.id) return;
+    const { data, error } = await supabaseClient
+        .from("afterhours_rooms")
+        .select("id,name,description,visibility,created_by")
+        .order("created_at", { ascending: true });
+    if (error) {
+        if (!String(error.code || "").startsWith("PGRST") && error.code !== "42P01") console.warn("Custom rooms unavailable:", error);
+        return;
+    }
+    (data || []).forEach(room => {
+        const key = String(room.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        if (!key || rooms[key]) return;
+        rooms[key] = { title: "💬 " + room.name, description: room.description || "" };
+    });
+    renderRoomButtons();
+}
+
+function renderRoomButtons() {
+    const container = document.querySelector(".rooms");
+    if (!container) return;
+    const active = currentRoom;
+    container.innerHTML = "";
+    Object.keys(rooms).forEach(key => {
+        const room = rooms[key];
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "room" + (key === active ? " active" : "");
+        button.dataset.room = key;
+        button.textContent = room.title;
+        button.addEventListener("click", () => changeRoom(key, button));
+        container.appendChild(button);
+    });
+}
+
+function renderEditorRooms() {
+    const list = get("editorRoomList"); if (!list) return; list.innerHTML = "";
+    if (!editorRooms.length) { list.innerHTML = '<div class="editor-empty">No rooms yet.</div>'; return; }
+    editorRooms.forEach(room => {
+        const row = document.createElement("div"); row.className = "editor-room-item";
+        const name = document.createElement("div"); name.className = "editor-room-name"; name.textContent = "# " + room.name;
+        const desc = document.createElement("div"); desc.className = "editor-room-desc"; desc.textContent = room.description || "No description";
+        const vis = document.createElement("span"); vis.className = "editor-room-visibility"; vis.textContent = room.visibility === "private" ? "🔒 Private" : "🌐 Public";
+        row.append(name, desc, vis); list.appendChild(row);
+    });
+}
+
+async function createEditorRoom() {
+    const name = get("editorRoomName")?.value?.trim(); const description = get("editorRoomDescription")?.value?.trim() || ""; const visibility = get("editorRoomVisibility")?.value || "public";
+    if (!name) { alert("Enter a room name."); return; }
+    const allowed = editorRoles.map(r => r.name);
+    const manage = editorRoles.filter(r => r.priority >= (ROLE_LEVELS[currentUser.role] || 0)).map(r => r.name);
+    const { error } = await supabaseClient.rpc("afterhours_editor_create_room", { p_name:name, p_description:description, p_visibility:visibility, p_allowed_roles:allowed.length ? allowed : ["Member"], p_manage_roles:manage.length ? manage : ["Owner"] });
+    if (error) { console.error("Room creation failed:", error); alert(error.message || "Unable to create room."); return; }
+    get("editorRoomName").value = ""; get("editorRoomDescription").value = ""; await loadEditorRooms(); await loadCustomRooms(); renderEditorRooms(); alert("Room created.");
+}
+
+function setupEditor() {
+    get("closeEditorButton")?.addEventListener("click", closeEditor);
+    get("editorOverlay")?.addEventListener("click", event => { if (event.target.id === "editorOverlay") closeEditor(); });
+    get("editorNewRoleButton")?.addEventListener("click", createEditorRole);
+    get("editorCreateRoomButton")?.addEventListener("click", createEditorRoom);
+    document.querySelectorAll("[data-editor-tab]").forEach(tab => {
+        tab.addEventListener("click", () => {
+            document.querySelectorAll("[data-editor-tab]").forEach(t => t.classList.toggle("active", t === tab));
+            get("editorRanksView")?.classList.toggle("hidden", tab.dataset.editorTab !== "ranks");
+            get("editorRoomsView")?.classList.toggle("hidden", tab.dataset.editorTab !== "rooms");
+        });
+    });
+    document.addEventListener("keydown", event => { if (event.key === "Escape") closeEditor(); });
+}
+
+// ============================================================
 // START
 // ============================================================
 
 setupButtons();
+setupStaffConsole();
+setupEditor();
 
 checkSession();
 
 startModerationStatusChecks();
+
+
+// ============================================================
+// NOTIFICATIONS UI 0.5
+// ============================================================
+
+let notificationsPanelOpen = false;
+
+function notificationTypeIcon(type) {
+    if (type === "message") return "💬";
+    if (type === "friend_request") return "👥";
+    if (type === "mention") return "🏷️";
+    if (type === "system") return "⭐";
+    return "🔔";
+}
+
+function formatNotificationTime(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const diff = Date.now() - date.getTime();
+    if (diff < 60 * 1000) return "just now";
+    if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))}m ago`;
+    if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / (60 * 60 * 1000))}h ago`;
+    if (diff < 7 * 24 * 60 * 60 * 1000) return `${Math.floor(diff / (24 * 60 * 60 * 1000))}d ago`;
+    return date.toLocaleDateString();
+}
+
+function renderNotifications(notifications) {
+    const list = document.getElementById("notificationsList");
+    const badge = document.getElementById("notificationBadge");
+    if (!list || !badge) return;
+
+    const items = Array.isArray(notifications) ? notifications : [];
+    const unread = items.filter(n => !n.read);
+
+    badge.textContent = unread.length > 99 ? "99+" : String(unread.length);
+    badge.hidden = unread.length === 0;
+
+    list.innerHTML = "";
+
+    if (!items.length) {
+        list.innerHTML = '<div class="notifications-empty">No notifications yet.</div>';
+        return;
+    }
+
+    const newItems = items.filter(n => !n.read);
+    const oldItems = items.filter(n => n.read);
+
+    function addSection(label, sectionItems) {
+        if (!sectionItems.length) return;
+
+        const heading = document.createElement("div");
+        heading.className = "notifications-section-label";
+        heading.textContent = label;
+        list.appendChild(heading);
+
+        sectionItems.forEach(notification => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `notification-item${notification.read ? "" : " unread"}`;
+
+            const icon = document.createElement("span");
+            icon.className = "notification-icon";
+            icon.textContent = notificationTypeIcon(notification.type);
+
+            const content = document.createElement("span");
+            content.className = "notification-content";
+
+            const message = document.createElement("div");
+            message.className = "notification-message";
+            message.textContent = notification.message || "You have a new notification.";
+
+            const time = document.createElement("div");
+            time.className = "notification-time";
+            time.textContent = formatNotificationTime(notification.created_at);
+
+            content.appendChild(message);
+            content.appendChild(time);
+
+            button.appendChild(icon);
+            button.appendChild(content);
+
+            if (!notification.read) {
+                const dot = document.createElement("span");
+                dot.className = "notification-unread-dot";
+                button.appendChild(dot);
+            }
+
+            button.addEventListener("click", async () => {
+                await markNotificationRead(notification.id);
+
+                // If the notification references a DM, let the existing
+                // app open it when that helper exists.
+                if (
+                    notification.type === "message" &&
+                    notification.reference_id &&
+                    typeof openDm === "function"
+                ) {
+                    try {
+                        await openDm(notification.reference_id);
+                    } catch (err) {
+                        console.warn("Unable to open notification DM:", err);
+                    }
+                }
+
+                closeNotificationsPanel();
+            });
+
+            list.appendChild(button);
+        });
+    }
+
+    addSection("NEW", newItems);
+    addSection("EARLIER", oldItems);
+}
+
+function openNotificationsPanel() {
+    const panel = document.getElementById("notificationsPanel");
+    const overlay = document.getElementById("notificationsOverlay");
+    if (!panel || !overlay) return;
+
+    notificationsPanelOpen = true;
+    panel.hidden = false;
+    overlay.hidden = false;
+    panel.setAttribute("aria-hidden", "false");
+
+    if (typeof loadNotifications === "function") {
+        loadNotifications();
+    }
+}
+
+function closeNotificationsPanel() {
+    const panel = document.getElementById("notificationsPanel");
+    const overlay = document.getElementById("notificationsOverlay");
+    if (!panel || !overlay) return;
+
+    notificationsPanelOpen = false;
+    panel.hidden = true;
+    overlay.hidden = true;
+    panel.setAttribute("aria-hidden", "true");
+}
+
+async function markNotificationRead(id) {
+    if (!id || !supabaseClient) return;
+
+    try {
+        await supabaseClient
+            .from("notifications")
+            .update({ read: true })
+            .eq("id", id)
+            .eq("recipient_id", currentUser.id);
+
+        if (typeof loadNotifications === "function") {
+            await loadNotifications();
+        }
+    } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+    }
+}
+
+async function markAllNotificationsRead() {
+    if (!supabaseClient || !currentUser?.id) return;
+
+    try {
+        await supabaseClient
+            .from("notifications")
+            .update({ read: true })
+            .eq("recipient_id", currentUser.id)
+            .eq("read", false);
+
+        if (typeof loadNotifications === "function") {
+            await loadNotifications();
+        }
+    } catch (err) {
+        console.error("Failed to mark all notifications as read:", err);
+    }
+}
+
+async function loadNotifications() {
+    if (!supabaseClient || !currentUser?.id) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from("notifications")
+            .select("*")
+            .eq("recipient_id", currentUser.id)
+            .order("created_at", { ascending: false })
+            .limit(100);
+
+        if (error) throw error;
+        renderNotifications(data || []);
+    } catch (err) {
+        console.error("Failed to load notifications:", err);
+    }
+}
+
+function subscribeToNotifications() {
+    if (!supabaseClient || !currentUser?.id) return;
+
+    const channel = supabaseClient
+        .channel(`notifications-${currentUser.id}`)
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "public",
+                table: "notifications",
+                filter: `recipient_id=eq.${currentUser.id}`
+            },
+            () => {
+                loadNotifications();
+            }
+        )
+        .subscribe();
+
+    return channel;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Friends controls: bind directly to the actual elements.
+    // This avoids relying on delegated clicks if another UI layer interferes.
+    const friendsButton = document.getElementById("friendsButton");
+    if (friendsButton) {
+        friendsButton.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            console.log("Friends button clicked");
+            toggleFriends();
+        };
+    }
+
+    const closeFriends = document.getElementById("closeFriends");
+    if (closeFriends) {
+        closeFriends.onclick = (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleFriends(false);
+        };
+    }
+
+    const friendsOverlay = document.getElementById("friendsOverlay");
+    if (friendsOverlay) {
+        friendsOverlay.onclick = () => toggleFriends(false);
+    }
+
+    document.getElementById("notificationsButton")
+        ?.addEventListener("click", openNotificationsPanel);
+
+    document.getElementById("closeNotifications")
+        ?.addEventListener("click", closeNotificationsPanel);
+
+    document.getElementById("notificationsOverlay")
+        ?.addEventListener("click", closeNotificationsPanel);
+
+    document.getElementById("markAllNotificationsRead")
+        ?.addEventListener("click", markAllNotificationsRead);
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && notificationsPanelOpen) {
+            closeNotificationsPanel();
+        }
+    });
+});
