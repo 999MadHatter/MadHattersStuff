@@ -627,3 +627,60 @@ REVOKE ALL ON FUNCTION public.afterhours_reset_test_purchase() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.afterhours_test_purchase(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.afterhours_get_store_test_state() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.afterhours_reset_test_purchase() TO authenticated;
+
+-- ------------------------------------------------------------
+-- Message editing
+-- ------------------------------------------------------------
+-- Make sure message UPDATE events are delivered by Supabase Realtime.
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL; END $$;
+
+ALTER TABLE public.messages REPLICA IDENTITY FULL;
+
+ALTER TABLE public.messages
+    ADD COLUMN IF NOT EXISTS edited_at timestamptz;
+
+CREATE OR REPLACE FUNCTION public.afterhours_edit_message(
+    p_message_id uuid,
+    p_new_content text
+)
+RETURNS public.messages
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    updated_message public.messages%ROWTYPE;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated.';
+    END IF;
+
+    IF trim(coalesce(p_new_content, '')) = '' THEN
+        RAISE EXCEPTION 'Message cannot be empty.';
+    END IF;
+
+    UPDATE public.messages
+    SET content = p_new_content,
+        edited_at = now()
+    WHERE id = p_message_id
+      AND user_id = auth.uid()
+    RETURNING * INTO updated_message;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'You can only edit your own messages.' USING ERRCODE = '42501';
+    END IF;
+
+    RETURN updated_message;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.afterhours_edit_message(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.afterhours_edit_message(uuid, text) TO authenticated;
+
+
+-- DM realtime for unread/read badges
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.dm_messages;
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL; END $$;

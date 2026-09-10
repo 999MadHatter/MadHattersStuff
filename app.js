@@ -48,6 +48,8 @@ let viewedProfileUser = null;
 // ============================================================
 
 let pendingAttachment = null;
+let replyingToMessage = null;
+let editingMessageId = null;
 const CHAT_ATTACHMENT_BUCKET = "chat-files";
 const CHAT_MAX_FILE_SIZE = 20 * 1024 * 1024;
 const CHAT_BLOCKED_EXTENSIONS = new Set([
@@ -186,30 +188,157 @@ async function getChatAttachmentUrl(path) {
 }
 
 function parseMessageContent(content) {
-    if (typeof content !== "string") return { text: "", attachment: null };
+    if (typeof content !== "string") return { text: "", attachment: null, reply: null };
 
-    const prefix = "__AFTERHOURS_ATTACHMENT__:";
-    if (!content.startsWith(prefix)) return { text: content, attachment: null };
+    const wrapperPrefix = "__AFTERHOURS_MESSAGE__:";
+    const attachmentPrefix = "__AFTERHOURS_ATTACHMENT__:";
+    const prefix = content.startsWith(wrapperPrefix)
+        ? wrapperPrefix
+        : content.startsWith(attachmentPrefix)
+            ? attachmentPrefix
+            : "";
+
+    if (!prefix) return { text: content, attachment: null, reply: null };
 
     try {
         const payload = JSON.parse(content.slice(prefix.length));
         return {
             text: payload.text || "",
-            attachment: payload.attachment || null
+            attachment: payload.attachment || null,
+            reply: payload.reply || null
         };
     } catch (error) {
-        console.error("Invalid attachment message:", error);
-        return { text: content, attachment: null };
+        console.error("Invalid message content:", error);
+        return { text: content, attachment: null, reply: null };
     }
 }
 
-async function appendAttachmentToMessage(content, file) {
-    if (!file) return content;
-    const uploaded = await uploadChatAttachment(file);
-    return "__AFTERHOURS_ATTACHMENT__:" + JSON.stringify({
-        text: content,
-        attachment: uploaded
+function buildMessageContent(text, attachment = null, reply = null) {
+    if (!attachment && !reply) return text;
+
+    return "__AFTERHOURS_MESSAGE__:" + JSON.stringify({
+        text: text || "",
+        attachment: attachment || null,
+        reply: reply || null
     });
+}
+
+async function appendAttachmentToMessage(content, file, reply = null) {
+    let uploaded = null;
+
+    if (file) {
+        uploaded = await uploadChatAttachment(file);
+    }
+
+    return buildMessageContent(content, uploaded, reply);
+}
+
+function clearMessageAction() {
+    replyingToMessage = null;
+    editingMessageId = null;
+
+    const bar = get("messageActionBar");
+    const input = get("messageInput");
+
+    if (bar) {
+        bar.innerHTML = "";
+        bar.classList.add("hidden");
+    }
+
+    if (input) {
+        input.placeholder = currentChatMode === "dm"
+            ? "Message..."
+            : "Message " + (rooms[currentRoom]?.title?.replace(/^..\s*/, "") || "General") + "...";
+    }
+}
+
+function showMessageAction(type, message, text = "") {
+    const bar = get("messageActionBar");
+    const input = get("messageInput");
+    if (!bar || !input) return;
+
+    bar.innerHTML = "";
+
+    const copy = document.createElement("div");
+    copy.className = "message-action-copy";
+
+    const title = document.createElement("strong");
+    title.textContent = type === "edit" ? "Editing message" : "Replying to @" + (message.username || "user");
+
+    const preview = document.createElement("span");
+    preview.textContent = text || "Attachment";
+
+    copy.append(title, preview);
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "message-action-cancel";
+    cancel.textContent = "×";
+    cancel.title = "Cancel";
+    cancel.addEventListener("click", clearMessageAction);
+
+    bar.append(copy, cancel);
+    bar.classList.remove("hidden");
+    input.placeholder = type === "edit" ? "Edit message..." : "Write a reply...";
+    input.focus();
+}
+
+function startReply(message, profile, parsedContent) {
+    replyingToMessage = {
+        id: message.id || "",
+        username: profile?.username || "user",
+        displayName: profile?.display_name || profile?.displayName || profile?.username || "User",
+        text: parsedContent?.text || ""
+    };
+    editingMessageId = null;
+    showMessageAction("reply", replyingToMessage, replyingToMessage.text);
+}
+
+function startEditingMessage(message, parsedContent) {
+    if (!message?.id || message.user_id !== currentUser.id) return;
+
+    editingMessageId = message.id;
+    replyingToMessage = null;
+
+    const input = get("messageInput");
+    if (input) input.value = parsedContent?.text || "";
+
+    showMessageAction("edit", { username: currentUser.username }, parsedContent?.text || "");
+}
+
+async function editMessage(messageId, newText) {
+    if (!messageId || !supabaseClient) return false;
+
+    const existing = document.querySelector('[data-message-id="' + messageId + '"]');
+    if (!existing) return false;
+
+    try {
+        const currentContent = existing.dataset.rawContent || newText;
+        const parsed = parseMessageContent(currentContent);
+        const content = buildMessageContent(newText, parsed.attachment, parsed.reply);
+
+        const { data, error } = await supabaseClient.rpc("afterhours_edit_message", {
+            p_message_id: messageId,
+            p_new_content: content
+        });
+
+        if (error) throw error;
+
+        // The RPC saves the edit in Supabase, but do not depend on the RPC
+        // response shape or on Realtime UPDATE arriving on this browser.
+        // Reload the current room immediately so the edited text appears
+        // without requiring a page refresh.
+        await loadMessages();
+
+        const input = get("messageInput");
+        if (input) input.value = "";
+        clearMessageAction();
+        return true;
+    } catch (error) {
+        console.error("Edit message failed:", error);
+        alert(error.message || "Unable to edit your message.");
+        return false;
+    }
 }
 
 // ============================================================
@@ -1228,6 +1357,7 @@ function showChat() {
     };
 
     safe("DM cleanup", () => stopDmRealtime());
+    safe("DM inbox cleanup", () => stopDmInboxRealtime());
     safe("rooms sidebar", () => showRoomsSidebar());
     safe("user UI", () => updateUser());
     safe("online presence", () => startOnlinePresence());
@@ -4004,6 +4134,12 @@ let currentDmUser =
 let dmRealtimeChannel =
     null;
 
+let dmInboxRealtimeChannel =
+    null;
+
+let dmReadMessageIds =
+    new Set();
+
 
 // ============================================================
 // REALTIME MESSAGING
@@ -4361,40 +4497,48 @@ async function subscribeToRoomMessages() {
     channel.on(
         "postgres_changes",
         {
-            event: "INSERT",
+            event: "UPDATE",
             schema: "public",
-            table: "dm_message_reads"
+            table: "messages",
+            filter: "room=eq." + roomAtSubscription
         },
-        payload => {
-            const read = payload.new;
-            if (!read || !read.message_id || read.reader_id === currentUser.id) return;
-            const element = document.querySelector(`[data-message-id="${read.message_id}"] .dm-read-status`);
-            if (element) {
-                element.textContent = "Read";
-                element.classList.add("read");
+        async function (payload) {
+            if (currentChatMode !== "room" || currentRoom !== roomAtSubscription || !payload.new) return;
+
+            const message = payload.new;
+            const existing = message.id
+                ? document.querySelector('[data-message-id="' + message.id + '"]')
+                : null;
+
+            if (existing) existing.remove();
+
+            let profile = null;
+            if (message.user_id) {
+                const { data, error } = await supabaseClient
+                    .from("profiles")
+                    .select("id, username, display_name, bio, avatar_url, role")
+                    .eq("id", message.user_id)
+                    .maybeSingle();
+                if (error) console.error("Realtime updated-message profile load failed:", error);
+                else profile = data;
             }
-            dmReadMessageIds.add(read.message_id);
+
+            if (!profile && message.user_id === currentUser.id) {
+                profile = {
+                    id: currentUser.id,
+                    username: currentUser.username,
+                    display_name: currentUser.displayName,
+                    bio: currentUser.bio,
+                    avatar_url: currentUser.avatarUrl,
+                    role: currentUser.role
+                };
+            }
+
+            renderMessage(message, profile);
         }
     );
 
-    channel.on(
-        "postgres_changes",
-        {
-            event: "DELETE",
-            schema: "public",
-            table: "dm_message_reads"
-        },
-        payload => {
-            const deleted = payload.old;
-            if (!deleted || !deleted.message_id || deleted.reader_id === currentUser.id) return;
-            const element = document.querySelector(`[data-message-id="${deleted.message_id}"] .dm-read-status`);
-            if (element) {
-                element.textContent = "Unread";
-                element.classList.remove("read");
-            }
-            dmReadMessageIds.delete(deleted.message_id);
-        }
-    );
+
 
     channel.subscribe(
         function (status) {
@@ -4690,6 +4834,22 @@ async function subscribeToDmMessages() {
     );
 
 
+    channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "dm_message_reads" },
+        payload => {
+            const read = payload.new;
+            if (!read || !read.message_id || read.reader_id === currentUser.id) return;
+            dmReadMessageIds.add(read.message_id);
+            const element = document.querySelector(`[data-message-id="${read.message_id}"] .dm-read-status`);
+            if (element) {
+                element.textContent = "Read";
+                element.classList.add("read");
+            }
+            loadDmConversations();
+        }
+    );
+
     channel.subscribe(
         function (status) {
 
@@ -4727,6 +4887,31 @@ async function subscribeToDmMessages() {
     );
 }
 
+
+async function subscribeToDmInboxRealtime() {
+    if (!supabaseClient || !currentUser.id || dmInboxRealtimeChannel) return;
+    const channel = supabaseClient.channel("afterhours-dm-inbox-" + currentUser.id)
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "dm_messages" }, async payload => {
+            const message = payload.new;
+            if (!message || message.sender_id === currentUser.id) return;
+            if (message.conversation_id === currentDmConversationId && currentChatMode === "dm") {
+                await markDmConversationRead(message.conversation_id);
+            }
+            await loadDmConversations();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "dm_message_reads" }, async () => {
+            await loadDmConversations();
+        });
+    dmInboxRealtimeChannel = channel;
+    channel.subscribe();
+}
+
+async function stopDmInboxRealtime() {
+    if (!supabaseClient || !dmInboxRealtimeChannel) return;
+    const channel = dmInboxRealtimeChannel;
+    dmInboxRealtimeChannel = null;
+    try { await supabaseClient.removeChannel(channel); } catch (err) { console.warn("Unable to remove DM inbox realtime channel:", err); }
+}
 
 async function stopDmRealtime() {
 
@@ -4948,6 +5133,8 @@ function renderMessage(
 
     messageElement.dataset.messageId =
         message.id || "";
+    messageElement.dataset.rawContent =
+        message.content || "";
 
 
     const avatar =
@@ -5044,6 +5231,13 @@ function renderMessage(
             message.created_at
         );
 
+    const edited = document.createElement("span");
+    edited.className = "message-edited";
+    if (message.edited_at) {
+        edited.textContent = "(edited)";
+        edited.title = "Edited " + formatMessageTime(message.edited_at);
+    }
+
 
     const parsedContent =
         parseMessageContent(message.content);
@@ -5053,6 +5247,48 @@ function renderMessage(
 
     textElement.textContent =
         parsedContent.text;
+
+    header.appendChild(
+        displayNameElement
+    );
+
+    header.appendChild(
+        username
+    );
+
+    header.appendChild(
+        roleElement
+    );
+
+    header.appendChild(
+        timestamp
+    );
+
+    if (message.edited_at) {
+        header.appendChild(edited);
+    }
+
+
+    content.appendChild(
+        header
+    );
+
+    if (parsedContent.reply) {
+        const replyPreview = document.createElement("div");
+        replyPreview.className = "message-reply-preview";
+        const replyLabel = document.createElement("strong");
+        replyLabel.textContent = "↪ @" + (parsedContent.reply.username || "user");
+        const replyText = document.createElement("span");
+        replyText.textContent = parsedContent.reply.text || "Attachment";
+        replyPreview.append(replyLabel, replyText);
+        content.appendChild(replyPreview);
+    }
+
+    if (parsedContent.text) {
+        content.appendChild(
+            textElement
+        );
+    }
 
     if (parsedContent.attachment) {
         const attachmentWrap = document.createElement("div");
@@ -5110,33 +5346,47 @@ function renderMessage(
     }
 
 
-    header.appendChild(
-        displayNameElement
-    );
-
-    header.appendChild(
-        username
-    );
-
-    header.appendChild(
-        roleElement
-    );
-
-    header.appendChild(
-        timestamp
-    );
-
-
-    content.appendChild(
-        header
-    );
-
-    if (parsedContent.text) {
-        content.appendChild(
-            textElement
-        );
+    if (currentChatMode === "dm" && message.user_id === currentUser.id && message.id) {
+        const readStatus = document.createElement("div");
+        readStatus.className = "dm-read-status";
+        if (dmReadMessageIds.has(message.id)) {
+            readStatus.textContent = "Read";
+            readStatus.classList.add("read");
+        } else {
+            readStatus.textContent = "Unread";
+        }
+        content.appendChild(readStatus);
     }
 
+
+    const actions = document.createElement("div");
+    actions.className = "message-actions";
+
+    const replyButton = document.createElement("button");
+    replyButton.type = "button";
+    replyButton.className = "message-action-button";
+    replyButton.textContent = "↩ Reply";
+    replyButton.title = "Reply to this message";
+    replyButton.addEventListener("click", event => {
+        event.stopPropagation();
+        startReply(message, user, parsedContent);
+    });
+    actions.appendChild(replyButton);
+
+    if (currentChatMode === "room" && message.user_id === currentUser.id && !String(message.content || "").startsWith("__afterhours_purchase__:")) {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "message-action-button";
+        editButton.textContent = "✎ Edit";
+        editButton.title = "Edit your message";
+        editButton.addEventListener("click", event => {
+            event.stopPropagation();
+            startEditingMessage(message, parsedContent);
+        });
+        actions.appendChild(editButton);
+    }
+
+    messageElement.appendChild(actions);
 
     messageElement.appendChild(
         avatar
@@ -5247,7 +5497,7 @@ async function loadMessages() {
     } = await supabaseClient
         .from("messages")
         .select(
-            "id, user_id, room, content, created_at"
+            "id, user_id, room, content, created_at, edited_at"
         )
         .eq(
             "room",
@@ -5488,6 +5738,11 @@ async function sendMessage() {
         return;
     }
 
+    if (editingMessageId) {
+        await editMessage(editingMessageId, input.value.trim());
+        return;
+    }
+
 
     const text =
         input.value.trim();
@@ -5542,7 +5797,8 @@ async function sendMessage() {
         const messageContent =
             await appendAttachmentToMessage(
                 text,
-                pendingAttachment
+                pendingAttachment,
+                replyingToMessage
             );
 
         const {
@@ -5580,6 +5836,7 @@ async function sendMessage() {
             "";
 
         clearPendingAttachment();
+        clearMessageAction();
 
         renderMessage(
             message,
@@ -5709,6 +5966,7 @@ function showMessagesView() {
 
     setSidebarInboxOpen(true);
 
+    subscribeToDmInboxRealtime();
     loadDmConversations();
 }
 
@@ -5816,7 +6074,7 @@ function highlightInboxConversation() {
 }
 
 
-function renderInboxItem(user, preview, conversationId) {
+function renderInboxItem(user, preview, conversationId, unreadCount = 0) {
 
     const button =
         document.createElement("button");
@@ -5839,6 +6097,10 @@ function renderInboxItem(user, preview, conversationId) {
     ) {
 
         button.classList.add("active");
+    }
+
+    if (Number(unreadCount) > 0) {
+        button.classList.add("unread");
     }
 
 
@@ -5912,6 +6174,13 @@ function renderInboxItem(user, preview, conversationId) {
     button.appendChild(avatar);
     button.appendChild(textContainer);
 
+    if (Number(unreadCount) > 0) {
+        const badge = document.createElement("span");
+        badge.className = "inbox-unread-badge";
+        badge.textContent = Number(unreadCount) > 99 ? "99+" : String(unreadCount);
+        button.appendChild(badge);
+    }
+
     return button;
 }
 
@@ -5964,7 +6233,8 @@ function renderDmList(conversations) {
                 renderInboxItem(
                     user,
                     conversation.preview,
-                    conversation.id
+                    conversation.id,
+                    conversation.unread_count || 0
                 );
 
 
@@ -6053,6 +6323,43 @@ async function loadLatestDmPreviews(conversationIds) {
     return previews;
 }
 
+
+async function loadDmUnreadCounts() {
+    const counts = new Map();
+    if (!supabaseClient || !currentUser.id) return counts;
+    const { data, error } = await supabaseClient.rpc("afterhours_get_dm_unread_counts");
+    if (error) {
+        console.error("Unable to load DM unread counts:", error);
+        return counts;
+    }
+    (data || []).forEach(row => {
+        if (row && row.conversation_id) counts.set(row.conversation_id, Number(row.unread_count || 0));
+    });
+    return counts;
+}
+
+async function loadDmReadState(conversationId) {
+    dmReadMessageIds = new Set();
+    if (!supabaseClient || !conversationId) return;
+    const { data, error } = await supabaseClient.rpc("afterhours_get_dm_read_state", { p_conversation_id: conversationId });
+    if (error) {
+        console.error("Unable to load DM read state:", error);
+        return;
+    }
+    (data || []).forEach(row => {
+        if (row && row.message_id && row.read_by_recipient) dmReadMessageIds.add(row.message_id);
+    });
+}
+
+async function markDmConversationRead(conversationId) {
+    if (!supabaseClient || !currentUser.id || !conversationId) return;
+    const { error } = await supabaseClient.rpc("afterhours_mark_dm_read", { p_conversation_id: conversationId });
+    if (error) {
+        console.error("Unable to mark DM as read:", error);
+        return;
+    }
+    await loadDmReadState(conversationId);
+}
 
 async function loadDmConversations() {
 
@@ -6203,6 +6510,9 @@ async function loadDmConversations() {
             conversationIds
         );
 
+    const unreadById =
+        await loadDmUnreadCounts();
+
 
     const formatted =
         rows.map(
@@ -6236,6 +6546,9 @@ async function loadDmConversations() {
                         previewRow
                             ? previewRow.content
                             : "No messages yet.",
+
+                    unread_count:
+                        unreadById.get(conversation.id) || 0,
 
                     user:
                         profilesById.get(
@@ -7079,6 +7392,9 @@ async function loadDmMessages() {
     }
 
 
+    await loadDmReadState(conversationAtLoad);
+    await markDmConversationRead(conversationAtLoad);
+
     const container =
         get("messages");
 
@@ -7161,6 +7477,8 @@ async function sendDmMessage() {
     const text =
         input.value.trim();
 
+    const dmContent = buildMessageContent(text, null, replyingToMessage);
+
 
     if (
         !text ||
@@ -7215,7 +7533,7 @@ async function sendDmMessage() {
                     currentDmConversationId,
 
                 message_content:
-                    text
+                    dmContent
             }
         );
 
@@ -7237,6 +7555,7 @@ async function sendDmMessage() {
 
         input.value =
             "";
+        clearMessageAction();
 
 
         const dmMessage =

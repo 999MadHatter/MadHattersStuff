@@ -810,6 +810,79 @@ button {
     margin-top: 10px;
 }
 
+.message-reply-preview {
+    margin-top: 8px;
+    padding: 7px 10px;
+    border-left: 3px solid #777783;
+    background: #181920;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: min(560px, 100%);
+}
+
+.message-reply-preview strong {
+    margin: 0;
+    font-size: 11px;
+}
+
+.message-reply-preview span {
+    color: #aaa8b3;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-action-bar {
+    order: -10;
+    flex: 1 0 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid #383944;
+    border-radius: 9px;
+    background: #181920;
+    margin-bottom: 7px;
+}
+
+.message-action-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.message-action-copy strong {
+    font-size: 12px;
+}
+
+.message-action-copy span {
+    color: #aaa8b3;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-action-cancel {
+    border: 0;
+    background: transparent;
+    color: #aaa8b3;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.message-action-cancel:hover {
+    color: #ffffff;
+}
+
+
 .message-image {
     display: block;
     max-width: min(420px, 100%);
@@ -997,6 +1070,7 @@ button {
 ============================================================ */
 
 .message {
+    position: relative;
     width: 100%;
     max-width: 1000px;
 
@@ -1022,6 +1096,9 @@ button {
 .message-content {
     min-width: 0;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .message-header {
@@ -1053,6 +1130,51 @@ button {
 .message-timestamp {
     color: #aaa8b3;
     font-size: 11px;
+}
+
+.message-edited {
+    color: #777783;
+    font-size: 10px;
+}
+
+.message-actions {
+    position: absolute;
+    top: -7px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid #383944;
+    border-radius: 8px;
+    background: #15161d;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(2px);
+    transition: opacity .12s ease, transform .12s ease;
+    z-index: 2;
+}
+
+.message:hover .message-actions,
+.message:focus-within .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.message-action-button {
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #d7d5de;
+    cursor: pointer;
+    padding: 5px 7px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.message-action-button:hover {
+    background: #2a2b35;
+    color: #ffffff;
 }
 
 .message-status {
@@ -1156,6 +1278,7 @@ button {
 
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
 
     gap: 11px;
 
