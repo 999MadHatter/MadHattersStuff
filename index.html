@@ -118,6 +118,7 @@
                         </button>
                     </div>
 
+
                     <div id="notificationsPanel" class="notifications-panel hidden">
                         <div class="notifications-header">
                             <span>Notifications</span>
@@ -164,6 +165,12 @@
                 </div>
 
                 <div class="sidebar-bottom">
+                    <div class="store-dock">
+                        <button id="storeButton" type="button" class="messages-button store-button">
+                            <span class="messages-button-icon">🌙</span>
+                            <span class="messages-button-label">Store</span>
+                        </button>
+                    </div>
                     <button id="profileButton" type="button" class="profile-button">
                         <span id="sidebarAvatar" class="avatar">?</span>
                         <span id="topUsername">User</span>
@@ -179,7 +186,10 @@
             <section class="chat-area">
                 <header class="chat-header">
                     <h2 id="roomTitle">💬 General</h2>
-                    <p id="roomDescription">Talk. Connect. Chill.</p>
+                    <div class="room-subheader">
+                        <p id="roomDescription">Talk. Connect. Chill.</p>
+                        <span id="broadcastMessage" class="broadcast-message hidden"></span>
+                    </div>
                 </header>
 
                 <div id="messages" class="messages">
@@ -294,11 +304,86 @@
                         <label class="editor-field"><span>Description</span><input id="editorRoomDescription" maxlength="120" placeholder="Talk about aerospace and aviation"></label>
                         <label class="editor-field"><span>Visibility</span><select id="editorRoomVisibility"><option value="public">Public</option><option value="private">Private</option></select></label>
                     </div>
-                    <button id="editorCreateRoomButton" type="button" class="primary-button">Create Room</button>
+                    <input id="editorRoomEditId" type="hidden" value="">
+                    <div id="editorRoomAccess" class="editor-room-access"></div>
+                    <div class="editor-room-form-actions">
+                        <button id="editorCreateRoomButton" type="button" class="primary-button">Create Room</button>
+                        <button id="editorCancelRoomEditButton" type="button" class="secondary-button hidden">Cancel Edit</button>
+                    </div>
                     <div class="editor-section-label">Existing Rooms</div>
                     <div id="editorRoomList" class="editor-room-list"></div>
                 </section>
             </div>
+        </section>
+    </div>
+
+    <!-- BROADCAST EDITOR -->
+    <div id="broadcastModal" class="editor-overlay hidden" aria-hidden="true">
+        <section class="editor-panel broadcast-editor-panel" role="dialog" aria-modal="true" aria-labelledby="broadcastTitle">
+            <header class="editor-header">
+                <div>
+                    <h2 id="broadcastTitle">📢 Afterhours Broadcast</h2>
+                    <p>Edit the small message beside the room description.</p>
+                </div>
+                <button id="broadcastCancelButton" type="button" class="editor-close">×</button>
+            </header>
+            <section class="editor-main">
+                <label class="editor-field">
+                    <span>Broadcast message</span>
+                    <input id="broadcastInput" maxlength="180" placeholder="Welcome to Afterhours!">
+                </label>
+                <div class="editor-form-actions">
+                    <button id="broadcastSaveButton" type="button" class="primary-button">Publish</button>
+                    <button type="button" class="secondary-button" onclick="closeBroadcastEditor()">Cancel</button>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- AFTERHOURS STORE -->
+    <div id="storeModal" class="editor-overlay hidden" aria-hidden="true">
+        <section class="editor-panel store-panel" role="dialog" aria-modal="true" aria-labelledby="storeTitle">
+            <header class="editor-header">
+                <div>
+                    <h2 id="storeTitle">🌙 Afterhours Store</h2>
+                    <p>Support Afterhours and unlock optional cosmetic perks.</p>
+                </div>
+                <button id="closeStoreButton" type="button" class="editor-close">×</button>
+            </header>
+            <section class="store-content">
+                <article class="store-card">
+                    <div class="store-card-icon">⭐</div>
+                    <div>
+                        <h3>Afterhours VIP</h3>
+                        <p>Exclusive cosmetic perks and a permanent VIP rank.</p>
+                    </div>
+                    <div class="store-card-price">$6 <small>one-time</small></div>
+                    <button type="button" class="primary-button" data-store-product="vip">Buy VIP</button>
+                </article>
+                <article class="store-card vip-plus-store-card">
+                    <div class="store-card-icon">✨</div>
+                    <div>
+                        <h3>Afterhours VIP+</h3>
+                        <p>Premium cosmetic perks and a permanent VIP+ rank.</p>
+                    </div>
+                    <div class="store-card-price">$6 <small>one-time</small></div>
+                    <button type="button" class="primary-button" data-store-product="vip_plus">Buy VIP+</button>
+                </article>
+                <div class="store-thanks">Thank you so much for the support! :)</div>
+
+                <section id="storeTestSection" class="store-test-section hidden">
+                    <div class="store-test-header">
+                        <h3>🧪 Store Test Mode</h3>
+                        <p>For approved testers only. No money is charged. Your original rank is saved.</p>
+                    </div>
+                    <div class="store-test-actions">
+                        <button type="button" class="secondary-button" data-store-test-product="vip" onclick="window.startStoreTestPurchase('vip')">Buy Test VIP</button>
+                        <button type="button" class="secondary-button" data-store-test-product="vip_plus" onclick="window.startStoreTestPurchase('vip_plus')">Buy Test VIP+</button>
+                        <button id="resetStoreTestButton" type="button" class="secondary-button hidden">Restore Original Rank</button>
+                    </div>
+                    <div id="storeTestStatus" class="store-test-status">No test rank is active.</div>
+                </section>
+            </section>
         </section>
     </div>
 
@@ -459,6 +544,22 @@
 
     <!-- APP -->
     <script src="./app.js"></script>
+
+    <script>
+        document.addEventListener("click", function (event) {
+            const button = event.target.closest && event.target.closest("[data-store-test-product]");
+            if (!button || button.dataset.storeTestBound === "true") return;
+            event.preventDefault();
+            const status = document.getElementById("storeTestStatus");
+            if (status) status.textContent = "Starting Store Test...";
+            if (typeof window.startStoreTestPurchase === "function") {
+                void window.startStoreTestPurchase(button.dataset.storeTestProduct);
+            } else {
+                if (status) status.textContent = "Store Test failed to initialize. Reload the page.";
+                console.error("[Store Test] startStoreTestPurchase is unavailable.");
+            }
+        }, true);
+    </script>
 
 </body>
 </html>

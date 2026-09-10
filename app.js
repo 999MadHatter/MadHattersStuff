@@ -403,7 +403,8 @@ const rankDefinitions = {
             "restrict_users",
             "delete_any_message",
             "handle_serious_reports",
-            "manage_site_settings"
+            "manage_site_settings",
+            "test_store_purchases"
         ]
     },
 
@@ -474,6 +475,20 @@ const rankDefinitions = {
             "vip_name_color",
             "premium_profile_perks",
             "create_premium_rooms"
+        ]
+    },
+
+    "VIP+": {
+        icon: "✨",
+        className: "rank-vip-plus",
+        permissions: [
+            "vip_badge",
+            "vip_name_color",
+            "premium_profile_perks",
+            "create_premium_rooms",
+            "vip_plus_badge",
+            "vip_plus_profile_themes",
+            "vip_plus_chat_effects"
         ]
     },
 
@@ -639,6 +654,86 @@ function closeStaffConsole() {
     panel.setAttribute("aria-hidden", "true");
 }
 
+let broadcastMessage = "";
+let broadcastChannel = null;
+
+function renderBroadcast() {
+    const el = get("broadcastMessage");
+    if (!el) return;
+    el.textContent = broadcastMessage;
+    el.classList.toggle("hidden", !broadcastMessage);
+    el.title = broadcastMessage || "No broadcast";
+}
+
+async function loadBroadcast() {
+    if (!supabaseClient) return;
+    const { data, error } = await supabaseClient
+        .from("afterhours_site_settings")
+        .select("value")
+        .eq("key", "broadcast")
+        .maybeSingle();
+    if (error) {
+        if (error.code !== "42P01") console.warn("Broadcast load failed:", error);
+        return;
+    }
+    broadcastMessage = data?.value || "";
+    renderBroadcast();
+}
+
+function subscribeToBroadcast() {
+    if (!supabaseClient) return;
+    if (broadcastChannel) supabaseClient.removeChannel(broadcastChannel).catch(() => {});
+    broadcastChannel = supabaseClient
+        .channel("afterhours-broadcast")
+        .on("postgres_changes", {
+            event: "*", schema: "public", table: "afterhours_site_settings",
+            filter: "key=eq.broadcast"
+        }, payload => {
+            broadcastMessage = payload.new?.value || "";
+            renderBroadcast();
+        })
+        .subscribe();
+}
+
+async function saveBroadcast() {
+    const input = get("broadcastInput");
+    if (!input || !supabaseClient) return;
+    const value = input.value.trim().slice(0, 180);
+    const { error } = await supabaseClient.rpc("afterhours_set_broadcast", {
+        p_value: value
+    });
+    if (error) {
+        console.error("Broadcast save failed:", error);
+        alert(error.message || "Unable to save broadcast.");
+        return;
+    }
+    broadcastMessage = value;
+    renderBroadcast();
+    closeBroadcastEditor();
+}
+
+function openBroadcastEditor() {
+    if (!hasPermission("manage_site_settings") && currentUser.role !== "Owner") {
+        alert("You do not have permission to edit the broadcast.");
+        return false;
+    }
+    const modal = get("broadcastModal");
+    const input = get("broadcastInput");
+    if (!modal || !input) return false;
+    input.value = broadcastMessage;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    setTimeout(() => input.focus(), 30);
+    return true;
+}
+
+function closeBroadcastEditor() {
+    const modal = get("broadcastModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+}
+
 function handleChatCommand(text) {
 
     if (!text.startsWith("/")) {
@@ -670,6 +765,16 @@ function handleChatCommand(text) {
 
     if (command === "/closeeditor") {
         closeEditor();
+        return true;
+    }
+
+    if (command === "/broadcast") {
+        openBroadcastEditor();
+        return true;
+    }
+
+    if (command === "/closebroadcast") {
+        closeBroadcastEditor();
         return true;
     }
 
@@ -767,6 +872,7 @@ const ROLE_LEVELS = {
     Member: 0,
     OG: 0,
     VIP: 0,
+    "VIP+": 0,
     Helper: 1,
     Moderator: 2,
     Admin: 3,
@@ -943,6 +1049,56 @@ function hasPermission(permission) {
 }
 
 
+// Refresh the logged-in user's profile after server-side changes
+// (such as Store Test Mode) without relying on a missing helper.
+async function loadCurrentUser() {
+
+    if (!supabaseClient) {
+        throw new Error("Supabase is not available.");
+    }
+
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.getUser();
+
+    if (authError) throw authError;
+
+    const user = authData?.user;
+
+    if (!user) {
+        throw new Error("No logged-in user found.");
+    }
+
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("id, username, display_name, bio, avatar_url, role")
+            .eq("id", user.id)
+            .single();
+
+    if (profileError) throw profileError;
+    if (!profile) throw new Error("Your profile could not be loaded.");
+
+    currentUser = {
+        id: profile.id,
+        username: profile.username || "",
+        displayName: profile.display_name || "",
+        bio: profile.bio || "No bio yet.",
+        avatarUrl:
+            profile.avatar_url ||
+            localStorage.getItem("afterhours-avatar-" + profile.id) ||
+            "",
+        role: getEffectiveRole(profile, user),
+        muted: Boolean(currentUser.muted),
+        restricted: Boolean(currentUser.restricted)
+    };
+
+    updateUser();
+    renderStoreTestControls();
+
+    return currentUser;
+}
+
+
 function applyRank(element, role) {
 
     if (!element) {
@@ -1045,6 +1201,9 @@ function showRegister() {
 
 function showChat() {
 
+    // Showing the chat UI must never be allowed to turn a successful
+    // authentication into a generic "login failed" message.  Optional
+    // realtime/database features are initialized independently.
     hideAllPages();
 
     const page = get("chatPage");
@@ -1057,21 +1216,31 @@ function showChat() {
     currentDmConversationId = null;
     currentDmUser = null;
 
-    stopDmRealtime();
+    const safe = (label, fn) => {
+        try {
+            const result = fn();
+            if (result && typeof result.catch === "function") {
+                result.catch(err => console.error("Afterhours " + label + " failed:", err));
+            }
+        } catch (err) {
+            console.error("Afterhours " + label + " failed:", err);
+        }
+    };
 
-    showRoomsSidebar();
-
-    updateUser();
-    startOnlinePresence();
-    loadNotifications();
-    subscribeToNotifications();
-    loadFriends();
-    subscribeToFriends();
-
-    subscribeToRoomMessages();
-    loadMessages();
-    loadDmConversations();
-    checkModerationStatus();
+    safe("DM cleanup", () => stopDmRealtime());
+    safe("rooms sidebar", () => showRoomsSidebar());
+    safe("user UI", () => updateUser());
+    safe("online presence", () => startOnlinePresence());
+    safe("notifications", () => loadNotifications());
+    safe("notification realtime", () => subscribeToNotifications());
+    safe("broadcast", () => loadBroadcast());
+    safe("broadcast realtime", () => subscribeToBroadcast());
+    safe("friends", () => loadFriends());
+    safe("friends realtime", () => subscribeToFriends());
+    safe("room realtime", () => subscribeToRoomMessages());
+    safe("messages", () => loadMessages());
+    safe("DM conversations", () => loadDmConversations());
+    safe("moderation status", () => checkModerationStatus());
 }
 
 
@@ -1134,6 +1303,10 @@ async function login() {
                 );
 
             error = result.error;
+
+            if (error && result.data?.error) {
+                error = new Error(result.data.error);
+            }
 
             if (!error && result.data?.session) {
 
@@ -1242,15 +1415,22 @@ async function login() {
 
         updateUser();
 
-        await loadCustomRoles();
-        await loadCustomRooms();
+        // These are post-login enhancements.  A failure in a custom-role,
+        // custom-room, or chat startup request must not invalidate auth.
+        try { await loadCustomRoles(); }
+        catch (err) { console.error("Custom roles startup failed:", err); }
+
+        try { await loadCustomRooms(); }
+        catch (err) { console.error("Custom rooms startup failed:", err); }
+
         showChat();
 
     } catch (err) {
 
-        console.error(err);
+        console.error("Login failed:", err);
 
         alert(
+            err?.message ||
             "Something went wrong during login."
         );
 
@@ -2397,13 +2577,10 @@ async function handleModerationAction(
         const {
             error
         } = await supabaseClient.rpc(
-            "afterhours_change_role",
+            "afterhours_set_user_role",
             {
-                target_id:
-                    user.id,
-
-                new_role:
-                    selectedRole
+                target_id: user.id,
+                new_role: selectedRole
             }
         );
 
@@ -3084,6 +3261,250 @@ function stopModerationStatusChecks() {
 }
 
 
+function canTestStore() {
+    return Boolean(currentUser?.id) && hasPermission("test_store_purchases");
+}
+
+let storeTestState = null;
+
+async function loadStoreTestState() {
+    storeTestState = null;
+    if (!supabaseClient || !currentUser?.id) return;
+
+    try {
+        const { data, error } = await supabaseClient.rpc("afterhours_get_store_test_state");
+        if (error) {
+            if (error.code !== "42883" && error.code !== "PGRST202") {
+                console.warn("Store test state unavailable:", error);
+            }
+            return;
+        }
+        storeTestState = data?.[0] || data || null;
+    } catch (err) {
+        console.warn("Store test state load failed:", err);
+    }
+}
+
+function renderStoreTestControls() {
+    const section = get("storeTestSection");
+    const resetButton = get("resetStoreTestButton");
+    const status = get("storeTestStatus");
+    if (!section) return;
+
+    const canTest = canTestStore();
+    const active = Boolean(storeTestState?.original_role);
+    section.classList.toggle("hidden", !canTest && !active);
+
+    if (resetButton) {
+        resetButton.classList.toggle("hidden", !active);
+    }
+
+    if (status) {
+        status.textContent = active
+            ? `Test rank active. Original rank: ${storeTestState.original_role}`
+            : "No test rank is active.";
+    }
+}
+
+async function openStore() {
+    const modal = get("storeModal");
+    if (!modal) return;
+    await loadStoreTestState();
+    renderStoreTestControls();
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+}
+
+function closeStore() {
+    const modal = get("storeModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+}
+
+async function startStoreTestPurchase(product) {
+    const productName = product === "vip_plus" ? "VIP+" : product === "vip" ? "VIP" : null;
+    const status = get("storeTestStatus");
+    const buttons = document.querySelectorAll("[data-store-test-product]");
+
+    console.log("[Store Test] click", { product, currentUser: currentUser?.id, role: currentUser?.role });
+
+    if (status) {
+        status.textContent = productName
+            ? `Starting ${productName} test...`
+            : "Invalid Store product.";
+    }
+
+    if (!productName) {
+        alert("Invalid Store product.");
+        return;
+    }
+
+    if (!currentUser?.id) {
+        if (status) status.textContent = "Not logged in.";
+        alert("Please log in before using Store test mode.");
+        return;
+    }
+
+    const isOwner = currentUser.id === OWNER_USER_ID || currentUser.role === "Owner";
+    if (!isOwner && !canTestStore()) {
+        if (status) status.textContent = "You do not have Store Test permission.";
+        alert("You do not have permission to use Store test mode.");
+        return;
+    }
+
+    const confirmed = confirm(
+        `Test ${productName}? No money will be charged. Your current rank will be saved so you can restore it later.`
+    );
+    if (!confirmed) {
+        if (status) status.textContent = "Test purchase canceled.";
+        return;
+    }
+
+    buttons.forEach(button => { button.disabled = true; });
+    if (status) status.textContent = `Testing ${productName}...`;
+
+    try {
+        if (!supabaseClient) {
+            throw new Error("Supabase is not connected.");
+        }
+
+        // V2 returns the created announcement so the UI can render it
+        // immediately. Fall back to the original RPC for older databases.
+        let rpcResult = await supabaseClient.rpc("afterhours_test_purchase_v2", {
+            p_product: product
+        });
+
+        if (rpcResult.error && ["42883", "PGRST202"].includes(rpcResult.error.code)) {
+            rpcResult = await supabaseClient.rpc("afterhours_test_purchase", {
+                p_product: product
+            });
+        }
+
+        if (rpcResult.error) throw rpcResult.error;
+
+        const result = rpcResult.data || {};
+
+        // The V2 RPC returns the exact message it inserted. Render that message
+        // immediately so the purchase announcement does not depend on realtime
+        // delivery or a second database read.
+        const createdMessage = result?.message;
+        if (createdMessage && currentRoom === "general" && currentChatMode === "room") {
+            const messagesEl = get("messages");
+            if (messagesEl) {
+                const profile = {
+                    id: currentUser.id,
+                    username: currentUser.username,
+                    display_name: currentUser.displayName,
+                    bio: currentUser.bio,
+                    avatar_url: currentUser.avatarUrl,
+                    role: result.role || productName
+                };
+                renderMessage(createdMessage, profile);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+        }
+
+        await loadCurrentUser();
+        await loadStoreTestState();
+        renderStoreTestControls();
+
+        // Re-read General as well. The duplicate-message guard prevents the
+        // immediate render above from appearing twice.
+        if (currentRoom === "general" && currentChatMode === "room") {
+            await loadMessages();
+        }
+
+        if (status) {
+            status.textContent = `${productName} test purchase complete! Announcement posted in General.`;
+        }
+
+        console.log("[Store Test] success", result);
+        alert(`${productName} test purchase complete! Your original rank was saved.
+
+The gold purchase announcement was posted in General.`);
+    } catch (err) {
+        console.error("[Store Test] purchase failed:", err);
+        if (status) {
+            status.textContent = `Test purchase failed: ${err?.message || "Unknown error"}`;
+        }
+        alert(err?.message || "Test purchase failed. Make sure the updated afterhours_upgrade.sql was run in Supabase.");
+    } finally {
+        buttons.forEach(button => { button.disabled = false; });
+    }
+}
+
+// Make the test-purchase handler available to any legacy inline callers.
+window.startStoreTestPurchase = startStoreTestPurchase;
+
+async function resetStoreTestPurchase() {
+    if (!currentUser?.id) return;
+    if (!storeTestState?.original_role) {
+        alert("You do not have an active Store test rank.");
+        return;
+    }
+
+    if (!confirm(`Restore your original rank: ${storeTestState.original_role}?`)) return;
+
+    try {
+        const { data, error } = await supabaseClient.rpc("afterhours_reset_test_purchase");
+        if (error) throw error;
+
+        storeTestState = null;
+        renderStoreTestControls();
+        await loadCurrentUser();
+        await loadMessages();
+        alert(`Your original rank (${data || "restored"}) has been restored.`);
+    } catch (err) {
+        console.error("Store test reset failed:", err);
+        alert(err?.message || "Unable to restore your original rank.");
+    }
+}
+
+async function startStoreCheckout(product) {
+    if (!currentUser?.id) {
+        alert("Please log in before purchasing a Store item.");
+        return;
+    }
+
+    if (!["vip", "vip_plus"].includes(product)) {
+        alert("Invalid Store product.");
+        return;
+    }
+
+    try {
+        const session = await supabaseClient.auth.getSession();
+        const accessToken = session?.data?.session?.access_token;
+        if (!accessToken) {
+            alert("Your session has expired. Please log in again.");
+            return;
+        }
+
+        if (window.location.protocol === "file:") {
+            alert("Stripe checkout needs the Afterhours server. Use the Store Test buttons instead while opening index.html directly.");
+            return;
+        }
+
+        const response = await fetch("/api/create-checkout-session", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ product })
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.url) {
+            throw new Error(result.error || "Unable to start checkout.");
+        }
+
+        window.location.href = result.url;
+    } catch (err) {
+        console.error("Store checkout failed:", err);
+        alert(err?.message || "Unable to start checkout. Make sure the Afterhours server is running and Stripe is configured.");
+    }
+}
 // ============================================================
 // PROFILE MODAL
 // ============================================================
@@ -3937,6 +4358,44 @@ async function subscribeToRoomMessages() {
     );
 
 
+    channel.on(
+        "postgres_changes",
+        {
+            event: "INSERT",
+            schema: "public",
+            table: "dm_message_reads"
+        },
+        payload => {
+            const read = payload.new;
+            if (!read || !read.message_id || read.reader_id === currentUser.id) return;
+            const element = document.querySelector(`[data-message-id="${read.message_id}"] .dm-read-status`);
+            if (element) {
+                element.textContent = "Read";
+                element.classList.add("read");
+            }
+            dmReadMessageIds.add(read.message_id);
+        }
+    );
+
+    channel.on(
+        "postgres_changes",
+        {
+            event: "DELETE",
+            schema: "public",
+            table: "dm_message_reads"
+        },
+        payload => {
+            const deleted = payload.old;
+            if (!deleted || !deleted.message_id || deleted.reader_id === currentUser.id) return;
+            const element = document.querySelector(`[data-message-id="${deleted.message_id}"] .dm-read-status`);
+            if (element) {
+                element.textContent = "Unread";
+                element.classList.remove("read");
+            }
+            dmReadMessageIds.delete(deleted.message_id);
+        }
+    );
+
     channel.subscribe(
         function (status) {
 
@@ -4355,6 +4814,54 @@ function showMessageStatus(text) {
 // RENDER MESSAGE
 // ============================================================
 
+function renderPurchaseAnnouncement(message, profile, messages) {
+    const prefix = "__afterhours_purchase__:";
+    if (!String(message.content || "").startsWith(prefix)) return false;
+
+    let purchase;
+    try {
+        purchase = JSON.parse(String(message.content).slice(prefix.length));
+    } catch (_) {
+        return false;
+    }
+
+    const article = document.createElement("article");
+    article.className = "message purchase-message";
+    article.dataset.messageId = message.id || "";
+
+    const icon = document.createElement("div");
+    icon.className = "purchase-message-icon";
+    icon.textContent = purchase.product === "VIP+" ? "✨" : "🌙";
+
+    const copy = document.createElement("div");
+    copy.className = "purchase-message-copy";
+
+    const username = document.createElement("button");
+    username.type = "button";
+    username.className = "purchase-message-username";
+    username.textContent = "@" + (purchase.username || profile?.username || "user");
+
+    const product = document.createElement("span");
+    product.textContent = ` purchased ${purchase.product || "VIP"}!`;
+
+    copy.append(username, product);
+    article.append(icon, copy);
+    messages.appendChild(article);
+
+    username.addEventListener("click", () => {
+        openUserProfile({
+            id: profile?.id || message.user_id,
+            username: purchase.username || profile?.username || "user",
+            displayName: profile?.display_name || profile?.username || purchase.username || "User",
+            bio: profile?.bio || "No bio yet.",
+            role: profile?.role || "Member",
+            avatarUrl: profile?.avatar_url || ""
+        });
+    });
+
+    return true;
+}
+
 function renderMessage(
     message,
     profile
@@ -4364,6 +4871,10 @@ function renderMessage(
         get("messages");
 
     if (!messages || !message) {
+        return;
+    }
+
+    if (renderPurchaseAnnouncement(message, profile, messages)) {
         return;
     }
 
@@ -6806,34 +7317,18 @@ async function sendDmMessage() {
 // ============================================================
 
 const rooms = {
-
-    general: {
-
-        title:
-            "💬 General",
-
-        description:
-            "Talk. Connect. Chill."
-    },
-
-    gaming: {
-
-        title:
-            "🎮 Gaming",
-
-        description:
-            "Talk about games."
-    },
-
-    music: {
-
-        title:
-            "🎵 Music",
-
-        description:
-            "Share music and discover new stuff."
-    }
+    general: { title: "💬 General", description: "Talk. Connect. Chill.", isBuiltin: true, allowed_roles: null },
+    gaming: { title: "🎮 Gaming", description: "Talk about games.", isBuiltin: true, allowed_roles: null },
+    music: { title: "🎵 Music", description: "Share music and discover new stuff.", isBuiltin: true, allowed_roles: null }
 };
+
+const roomMeta = new Map();
+
+function canAccessRoom(room) {
+    if (!room || room.isBuiltin || !Array.isArray(room.allowed_roles) || !room.allowed_roles.length) return true;
+    if (currentUser?.role === "Owner") return true;
+    return room.allowed_roles.includes(currentUser?.role || "Member");
+}
 
 
 async function changeRoom(
@@ -6845,6 +7340,11 @@ async function changeRoom(
         rooms[roomName];
 
     if (!room) {
+        return;
+    }
+
+    if (!canAccessRoom(room)) {
+        alert("You do not have access to this room.");
         return;
     }
 
@@ -7212,6 +7712,21 @@ function setupButtons() {
             saveProfile
         );
 
+
+    get("storeButton")?.addEventListener("click", openStore);
+    get("closeStoreButton")?.addEventListener("click", closeStore);
+    get("storeModal")?.addEventListener("click", event => {
+        if (event.target.id === "storeModal") closeStore();
+    });
+    document.querySelectorAll("[data-store-product]").forEach(button => {
+        button.addEventListener("click", () => startStoreCheckout(button.dataset.storeProduct));
+    });
+
+    get("broadcastSaveButton")?.addEventListener("click", saveBroadcast);
+    get("broadcastCancelButton")?.addEventListener("click", closeBroadcastEditor);
+    get("broadcastModal")?.addEventListener("click", event => {
+        if (event.target.id === "broadcastModal") closeBroadcastEditor();
+    });
 
     // --------------------------------------------------------
     // Profile DM button
@@ -7602,8 +8117,12 @@ const EDITOR_PERMISSION_CATALOG = [
     ["handle_serious_reports", "Handle serious reports"],
     ["manage_conversations", "Manage conversations"],
     ["manage_site_settings", "Manage site settings"],
+    ["test_store_purchases", "Test Store purchases"],
     ["vip_badge", "VIP badge"],
     ["vip_name_color", "VIP name color"],
+    ["vip_plus_badge", "VIP+ badge"],
+    ["vip_plus_profile_themes", "VIP+ profile themes"],
+    ["vip_plus_chat_effects", "VIP+ chat effects"],
     ["og_badge", "OG badge"]
 ];
 
@@ -7642,7 +8161,7 @@ async function loadEditorRooms() {
     if (!supabaseClient || !currentUser?.id) return;
     const { data, error } = await supabaseClient
         .from("afterhours_rooms")
-        .select("id,name,description,visibility,created_by")
+        .select("id,name,description,visibility,created_by,allowed_roles,manage_roles")
         .order("created_at", { ascending: true });
     if (!error) editorRooms = data || [];
 }
@@ -7673,6 +8192,9 @@ async function loadEditorData() {
     renderEditorRooms();
     if (!editorSelectedRoleId && editorRoles.length) editorSelectedRoleId = editorRoles[0].id;
     renderEditorRoleForm();
+    if (!get("editorRoomEditId")?.value) {
+        renderEditorRoomAccessSelector([], get("editorRoomVisibility")?.value || "public");
+    }
 }
 
 function renderEditorRoles() {
@@ -7747,7 +8269,7 @@ async function saveEditorRole(id) {
 
 async function createEditorRole() {
     if (!editorCanOpen()) return;
-    const { data, error } = await supabaseClient.rpc("afterhours_editor_save_role", { p_id:null, p_name:"New Rank", p_color:"#ffffff", p_badge:"🏷️", p_priority:5, p_permissions:["chat","send_messages","join_rooms"] });
+    const { data, error } = await supabaseClient.rpc("afterhours_editor_save_role", { p_id:null, p_name:"New Rank", p_color:"#ffffff", p_badge:"🏷️", p_priority:1, p_permissions:["chat","send_messages","join_rooms"] });
     if (error) { console.error("Rank creation failed:", error); alert(error.message || "Unable to create rank."); return; }
     await loadCustomRoles(); editorSelectedRoleId = data.id; renderEditorRoles(); renderEditorRoleForm();
 }
@@ -7761,20 +8283,47 @@ async function deleteEditorRole(id) {
 
 async function loadCustomRooms() {
     if (!supabaseClient || !currentUser?.id) return;
+
     const { data, error } = await supabaseClient
         .from("afterhours_rooms")
-        .select("id,name,description,visibility,created_by")
+        .select("id,name,description,visibility,created_by,allowed_roles,manage_roles")
         .order("created_at", { ascending: true });
+
     if (error) {
-        if (!String(error.code || "").startsWith("PGRST") && error.code !== "42P01") console.warn("Custom rooms unavailable:", error);
+        if (!String(error.code || "").startsWith("PGRST") && error.code !== "42P01") {
+            console.warn("Custom rooms unavailable:", error);
+        }
         return;
     }
-    (data || []).forEach(room => {
-        const key = String(room.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-        if (!key || rooms[key]) return;
-        rooms[key] = { title: "💬 " + room.name, description: room.description || "" };
+
+    Object.keys(rooms).forEach(key => {
+        if (!rooms[key].isBuiltin) delete rooms[key];
     });
+    roomMeta.clear();
+
+    (data || []).forEach(room => {
+        const key = String(room.name || "").toLowerCase().trim()
+            .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        if (!key || rooms[key]) return;
+
+        const allowedRoles = Array.isArray(room.allowed_roles) ? room.allowed_roles : [];
+        rooms[key] = {
+            title: "💬 " + room.name,
+            description: room.description || "",
+            isBuiltin: false,
+            allowed_roles: allowedRoles,
+            id: room.id,
+            visibility: room.visibility || "public",
+            name: room.name
+        };
+        roomMeta.set(key, room);
+    });
+
     renderRoomButtons();
+
+    if (currentChatMode === "room" && currentRoom && !canAccessRoom(rooms[currentRoom])) {
+        await changeRoom("general", document.querySelector('.room[data-room="general"]'));
+    }
 }
 
 function renderRoomButtons() {
@@ -7782,38 +8331,232 @@ function renderRoomButtons() {
     if (!container) return;
     const active = currentRoom;
     container.innerHTML = "";
+
     Object.keys(rooms).forEach(key => {
         const room = rooms[key];
+        if (!canAccessRoom(room)) return;
+
         const button = document.createElement("button");
         button.type = "button";
         button.className = "room" + (key === active ? " active" : "");
         button.dataset.room = key;
         button.textContent = room.title;
+        button.title = room.description || room.title;
         button.addEventListener("click", () => changeRoom(key, button));
         container.appendChild(button);
     });
 }
 
+function renderEditorRoomAccessSelector(selectedRoles = [], visibility = "public") {
+    const host = get("editorRoomAccess");
+    if (!host) return;
+    host.innerHTML = "";
+
+    const builtInRoles = Object.keys(rankDefinitions).map(name => ({
+        name,
+        badge: rankDefinitions[name]?.badge || rankDefinitions[name]?.icon || "🏷️",
+        priority: ROLE_LEVELS[name] ?? 0,
+        is_system: true
+    }));
+    const customRoles = editorRoles.filter(role => !builtInRoles.some(builtIn => builtIn.name === role.name));
+    const roles = [...builtInRoles, ...customRoles];
+
+    const selected = new Set(Array.isArray(selectedRoles) ? selectedRoles : []);
+    const heading = document.createElement("div");
+    heading.className = "editor-section-label";
+    heading.textContent = "Who can access this room?";
+    host.appendChild(heading);
+
+    const grid = document.createElement("div");
+    grid.className = "editor-room-access-grid";
+
+    roles.forEach(role => {
+        const label = document.createElement("label");
+        label.className = "editor-room-access-option";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.dataset.role = role.name;
+        cb.checked = visibility === "public" || selected.has(role.name) || role.name === "Owner";
+        cb.disabled = role.name === "Owner";
+        const span = document.createElement("span");
+        span.textContent = `${role.badge || "🏷️"} ${role.name}`;
+        label.append(cb, span);
+        grid.appendChild(label);
+    });
+
+    host.appendChild(grid);
+
+    const note = document.createElement("div");
+    note.className = "editor-room-access-note";
+    note.textContent = visibility === "public"
+        ? "Public rooms allow every rank. Private rooms use the selected ranks."
+        : "Owner always has access.";
+    host.appendChild(note);
+}
+
+function getSelectedRoomRoles() {
+    return [...document.querySelectorAll("#editorRoomAccess input[type=checkbox]:checked")]
+        .map(input => input.dataset.role).filter(Boolean);
+}
+
+function setRoomFormMode(room = null) {
+    const title = document.querySelector("#editorRoomsView .editor-form-heading");
+    const button = get("editorCreateRoomButton");
+    const cancel = get("editorCancelRoomEditButton");
+    if (title) title.textContent = room ? "Edit Room" : "Create Room";
+    if (button) button.textContent = room ? "Save Room" : "Create Room";
+    if (cancel) cancel.classList.toggle("hidden", !room);
+}
+
+function resetEditorRoomForm() {
+    get("editorRoomName").value = "";
+    get("editorRoomDescription").value = "";
+    get("editorRoomVisibility").value = "public";
+    get("editorRoomEditId").value = "";
+    renderEditorRoomAccessSelector([], "public");
+    setRoomFormMode(null);
+}
+
+function editEditorRoom(room) {
+    if (!room) return;
+    get("editorRoomName").value = room.name || "";
+    get("editorRoomDescription").value = room.description || "";
+    get("editorRoomVisibility").value = room.visibility || "public";
+    get("editorRoomEditId").value = room.id || "";
+    renderEditorRoomAccessSelector(room.allowed_roles || [], room.visibility || "public");
+    setRoomFormMode(room);
+}
+
+async function deleteEditorRoom(id, name) {
+    if (!hasPermission("delete_rooms")) {
+        alert("You do not have permission to delete rooms.");
+        return;
+    }
+    if (!confirm(`Delete the room "${name}"? Its messages will be kept.`)) return;
+
+    const { error } = await supabaseClient.rpc("afterhours_editor_delete_room", { p_id: id });
+    if (error) {
+        console.error("Room delete failed:", error);
+        alert(error.message || "Unable to delete room.");
+        return;
+    }
+
+    if (get("editorRoomEditId")?.value === id) resetEditorRoomForm();
+    await loadEditorRooms();
+    await loadCustomRooms();
+    renderEditorRooms();
+
+    if (currentRoom && !rooms[currentRoom]) {
+        await changeRoom("general", document.querySelector('.room[data-room="general"]'));
+    }
+}
+
 function renderEditorRooms() {
-    const list = get("editorRoomList"); if (!list) return; list.innerHTML = "";
-    if (!editorRooms.length) { list.innerHTML = '<div class="editor-empty">No rooms yet.</div>'; return; }
+    const list = get("editorRoomList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    if (!editorRooms.length) {
+        list.innerHTML = '<div class="editor-empty">No custom rooms yet.</div>';
+        return;
+    }
+
     editorRooms.forEach(room => {
-        const row = document.createElement("div"); row.className = "editor-room-item";
-        const name = document.createElement("div"); name.className = "editor-room-name"; name.textContent = "# " + room.name;
-        const desc = document.createElement("div"); desc.className = "editor-room-desc"; desc.textContent = room.description || "No description";
-        const vis = document.createElement("span"); vis.className = "editor-room-visibility"; vis.textContent = room.visibility === "private" ? "🔒 Private" : "🌐 Public";
-        row.append(name, desc, vis); list.appendChild(row);
+        const row = document.createElement("div");
+        row.className = "editor-room-item";
+
+        const info = document.createElement("div");
+        info.className = "editor-room-info";
+
+        const name = document.createElement("div");
+        name.className = "editor-room-name";
+        name.textContent = "# " + room.name;
+
+        const desc = document.createElement("div");
+        desc.className = "editor-room-desc";
+        desc.textContent = room.description || "No description";
+
+        const access = document.createElement("div");
+        access.className = "editor-room-access-summary";
+        const roles = Array.isArray(room.allowed_roles) ? room.allowed_roles : [];
+        access.textContent = room.visibility === "public"
+            ? "Everyone"
+            : `Access: ${roles.length ? roles.join(", ") : "Member"}`;
+
+        info.append(name, desc, access);
+
+        const vis = document.createElement("span");
+        vis.className = "editor-room-visibility";
+        vis.textContent = room.visibility === "private" ? "🔒 Private" : "🌐 Public";
+
+        const actions = document.createElement("div");
+        actions.className = "editor-room-actions";
+
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "editor-room-action edit";
+        edit.textContent = "Edit";
+        edit.addEventListener("click", () => editEditorRoom(room));
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "editor-room-action delete";
+        del.textContent = "🗑️";
+        del.title = "Delete room";
+        del.addEventListener("click", () => deleteEditorRoom(room.id, room.name));
+
+        actions.append(edit, del);
+        row.append(info, vis, actions);
+        list.appendChild(row);
     });
 }
 
 async function createEditorRoom() {
-    const name = get("editorRoomName")?.value?.trim(); const description = get("editorRoomDescription")?.value?.trim() || ""; const visibility = get("editorRoomVisibility")?.value || "public";
-    if (!name) { alert("Enter a room name."); return; }
-    const allowed = editorRoles.map(r => r.name);
-    const manage = editorRoles.filter(r => r.priority >= (ROLE_LEVELS[currentUser.role] || 0)).map(r => r.name);
-    const { error } = await supabaseClient.rpc("afterhours_editor_create_room", { p_name:name, p_description:description, p_visibility:visibility, p_allowed_roles:allowed.length ? allowed : ["Member"], p_manage_roles:manage.length ? manage : ["Owner"] });
-    if (error) { console.error("Room creation failed:", error); alert(error.message || "Unable to create room."); return; }
-    get("editorRoomName").value = ""; get("editorRoomDescription").value = ""; await loadEditorRooms(); await loadCustomRooms(); renderEditorRooms(); alert("Room created.");
+    const name = get("editorRoomName")?.value?.trim();
+    const description = get("editorRoomDescription")?.value?.trim() || "";
+    const visibility = get("editorRoomVisibility")?.value || "public";
+    const editId = get("editorRoomEditId")?.value || "";
+
+    if (!name) {
+        alert("Enter a room name.");
+        return;
+    }
+
+    const allowedRoles = visibility === "public"
+        ? editorRoles.map(r => r.name)
+        : getSelectedRoomRoles();
+
+    if (!allowedRoles.length) {
+        alert("Select at least one rank for this private room.");
+        return;
+    }
+    if (!allowedRoles.includes("Owner")) allowedRoles.push("Owner");
+
+    const manage = editorRoles
+        .filter(r => Number(r.priority) >= (ROLE_LEVELS[currentUser.role] || 0))
+        .map(r => r.name);
+
+    const result = editId
+        ? await supabaseClient.rpc("afterhours_editor_update_room", {
+            p_id: editId, p_name: name, p_description: description,
+            p_visibility: visibility, p_allowed_roles: allowedRoles,
+            p_manage_roles: manage.length ? manage : ["Owner"]
+        })
+        : await supabaseClient.rpc("afterhours_editor_create_room_v2", {
+            p_name: name, p_description: description, p_visibility: visibility,
+            p_allowed_roles: allowedRoles, p_manage_roles: manage.length ? manage : ["Owner"]
+        });
+
+    if (result.error) {
+        console.error("Room save failed:", result.error);
+        alert(result.error.message || "Unable to save room.");
+        return;
+    }
+
+    resetEditorRoomForm();
+    await loadEditorRooms();
+    await loadCustomRooms();
+    renderEditorRooms();
 }
 
 function setupEditor() {
@@ -7821,6 +8564,10 @@ function setupEditor() {
     get("editorOverlay")?.addEventListener("click", event => { if (event.target.id === "editorOverlay") closeEditor(); });
     get("editorNewRoleButton")?.addEventListener("click", createEditorRole);
     get("editorCreateRoomButton")?.addEventListener("click", createEditorRoom);
+    get("editorCancelRoomEditButton")?.addEventListener("click", resetEditorRoomForm);
+    get("editorRoomVisibility")?.addEventListener("change", () => {
+        renderEditorRoomAccessSelector(getSelectedRoomRoles(), get("editorRoomVisibility")?.value || "public");
+    });
     document.querySelectorAll("[data-editor-tab]").forEach(tab => {
         tab.addEventListener("click", () => {
             document.querySelectorAll("[data-editor-tab]").forEach(t => t.classList.toggle("active", t === tab));
@@ -7849,6 +8596,7 @@ startModerationStatusChecks();
 // ============================================================
 
 let notificationsPanelOpen = false;
+let liveNotificationsChannel = null;
 
 function notificationTypeIcon(type) {
     if (type === "message") return "💬";
@@ -7881,6 +8629,13 @@ function renderNotifications(notifications) {
 
     badge.textContent = unread.length > 99 ? "99+" : String(unread.length);
     badge.hidden = unread.length === 0;
+    const notificationButton = document.getElementById("notificationsButton");
+    if (notificationButton) {
+        notificationButton.classList.toggle("has-unread", unread.length > 0);
+        notificationButton.title = unread.length
+            ? `${unread.length} unread notification${unread.length === 1 ? "" : "s"}`
+            : "Notifications";
+    }
 
     list.innerHTML = "";
 
@@ -8043,26 +8798,55 @@ async function loadNotifications() {
 function subscribeToNotifications() {
     if (!supabaseClient || !currentUser?.id) return;
 
-    const channel = supabaseClient
+    if (liveNotificationsChannel) {
+        supabaseClient.removeChannel(liveNotificationsChannel).catch(() => {});
+    }
+
+    liveNotificationsChannel = supabaseClient
         .channel(`notifications-${currentUser.id}`)
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                schema: "public",
-                table: "notifications",
-                filter: `recipient_id=eq.${currentUser.id}`
-            },
-            () => {
-                loadNotifications();
+        .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `recipient_id=eq.${currentUser.id}`
+        }, payload => {
+            if (payload.eventType === "INSERT" && payload.new && !payload.new.read) {
+                const button = document.getElementById("notificationsButton");
+                button?.classList.add("notification-pulse");
+                setTimeout(() => button?.classList.remove("notification-pulse"), 900);
             }
-        )
-        .subscribe();
+            loadNotifications();
+        })
+        .subscribe(status => {
+            if (status === "CHANNEL_ERROR") console.error("Notifications realtime channel error.");
+        });
 
-    return channel;
+    return liveNotificationsChannel;
 }
-
 document.addEventListener("DOMContentLoaded", () => {
+    // Store Test controls use one direct binding. This is intentionally
+    // independent from setupButtons so unrelated UI initialization cannot
+    // make the test purchase controls dead.
+    document.querySelectorAll("[data-store-test-product]").forEach(button => {
+        if (button.dataset.storeTestBound === "true") return;
+        button.dataset.storeTestBound = "true";
+        button.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            void startStoreTestPurchase(button.dataset.storeTestProduct);
+        });
+    });
+
+    const resetStoreTestButton = document.getElementById("resetStoreTestButton");
+    if (resetStoreTestButton && resetStoreTestButton.dataset.storeTestResetBound !== "true") {
+        resetStoreTestButton.dataset.storeTestResetBound = "true";
+        resetStoreTestButton.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            void resetStoreTestPurchase();
+        });
+    }
+
     // Friends controls: bind directly to the actual elements.
     // This avoids relying on delegated clicks if another UI layer interferes.
     const friendsButton = document.getElementById("friendsButton");
