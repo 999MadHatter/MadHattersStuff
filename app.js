@@ -1369,7 +1369,22 @@ function applyRank(element, role) {
         .concat(rank.className || "rank-member")
         .join(" ");
 
-    element.style.color = rank.color || "";
+    const rankColor = rank.color || "";
+    element.style.color = rankColor;
+    element.style.backgroundColor = "";
+    element.style.borderColor = "";
+
+    // Custom ranks should look like the built-in rank pills:
+    // use the selected rank color for the border/text and a
+    // translucent version of that color for the filled background.
+    if ((rank.className || "") === "custom-rank" && /^#[0-9a-fA-F]{6}$/.test(rankColor)) {
+        const red = parseInt(rankColor.slice(1, 3), 16);
+        const green = parseInt(rankColor.slice(3, 5), 16);
+        const blue = parseInt(rankColor.slice(5, 7), 16);
+        element.style.backgroundColor = `rgba(${red}, ${green}, ${blue}, 0.22)`;
+        element.style.borderColor = rankColor;
+    }
+
     element.textContent =
         (rank.icon || rank.badge || "🏷️") + " " + (role || "Member");
 }
