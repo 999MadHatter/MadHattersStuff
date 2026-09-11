@@ -3872,3 +3872,82 @@ body.afterhours-light-theme .sidebar-bottom { border-color: #d6d8df !important; 
 @media (max-width: 520px) {
     .profile-achievements-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ============================================================
+   SIDEBAR LAYOUT FIX — keep navigation and bottom controls
+   from collapsing/overlapping.
+============================================================ */
+.sidebar {
+    overflow: hidden;
+}
+
+.sidebar > .sidebar-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.sidebar > .sidebar-bottom {
+    flex: 0 0 auto;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    padding-top: 14px;
+    border-top: 2px solid #33343e;
+}
+
+.sidebar-bottom {
+    gap: 2px;
+}
+
+.sidebar-bottom .store-dock,
+.sidebar-bottom .profile-button,
+.sidebar-bottom .settings-button,
+.sidebar-bottom > .secondary-button {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar-bottom .profile-button {
+    min-height: 44px;
+    margin-bottom: 0;
+}
+
+.sidebar-bottom .settings-button {
+    margin-top: 0;
+}
+
+@media (max-height: 700px) {
+    .sidebar {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+
+    .sidebar-header {
+        padding-bottom: 18px;
+    }
+
+    .sidebar-bottom {
+        padding-top: 10px;
+    }
+
+    .sidebar-bottom .store-button,
+    .sidebar-bottom .profile-button,
+    .sidebar-bottom .settings-button,
+    .sidebar-bottom > .secondary-button {
+        min-height: 40px;
+    }
+
+    .profile-button {
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .profile-button .avatar {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+}
