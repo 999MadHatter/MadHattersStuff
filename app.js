@@ -2499,14 +2499,24 @@ const PROFILE_ACHIEVEMENTS = [
     { id: "gamer", icon: "🎮", name: "Gamer", test: s => s.gamingMessages >= 1 },
     { id: "talkative", icon: "💬", name: "Talkative", test: s => s.messages >= 1000 },
     { id: "music", icon: "🎵", name: "Music Lover", test: s => s.musicMessages >= 1 },
-    { id: "explorer", icon: "🧭", name: "Explorer", test: s => s.rooms >= 5 },
-    { id: "og", icon: "🏆", name: "OG", test: s => s.accountAgeDays >= 100 },
+    { id: "explorer", icon: "🧭", name: "Explorer", test: s => s.rooms >= 3 },
+    { id: "og", icon: "🏆", name: "OG", test: s => {
+            const joined = s.createdAt ? new Date(s.createdAt).getTime() : NaN;
+            const launch = new Date("2026-09-03T00:00:00Z").getTime();
+            const windowEnd = launch + (10 * 86400000);
+            return Number.isFinite(joined) && joined >= launch && joined < windowEnd;
+        } },
     { id: "inbox", icon: "📨", name: "Inbox", test: s => s.dmMessages >= 1 },
     { id: "connected", icon: "🔔", name: "Connected", test: s => s.notifications >= 1 },
     { id: "say_cheese", icon: "📸", name: "Say Cheese", test: s => !!s.avatar },
-    { id: "veteran", icon: "⭐", name: "Veteran", test: s => s.accountAgeDays >= 30 },
-    { id: "vip", icon: "⭐", name: "VIP", test: s => ["VIP", "VIP+"].includes(s.role) },
-    { id: "supporter", icon: "💎", name: "Supporter", test: s => ["VIP", "VIP+"].includes(s.role) },
+    { id: "veteran", icon: "⭐", name: "Veteran", test: s => {
+            const joined = s.createdAt ? new Date(s.createdAt).getTime() : NaN;
+            const launch = new Date("2026-09-03T00:00:00Z").getTime();
+            const windowEnd = launch + (50 * 86400000);
+            return Number.isFinite(joined) && joined >= launch && joined < windowEnd;
+        } },
+    { id: "staff", icon: "🛡️", name: "Staff", test: s => ["Helper", "Moderator", "Admin", "Developer", "Owner"].includes(s.role) },
+    { id: "supporter", icon: "💎", name: "Supporter", test: s => ["VIP", "VIP+", "Helper", "Moderator", "Admin", "Developer", "Owner"].includes(s.role) },
     { id: "custom_made", icon: "🎨", name: "Custom Made", test: s => !!s.isCustomRole }
 ];
 
@@ -2522,7 +2532,8 @@ async function loadProfileAchievementStats(user) {
         avatar: !!user.avatarUrl,
         role: getEffectiveRole(user, user),
         accountAgeDays: 0,
-        isCustomRole: false
+        isCustomRole: false,
+        createdAt: user.createdAt || user.created_at || null
     };
 
     if (!supabaseClient || !user?.id) return stats;
@@ -2537,6 +2548,7 @@ async function loadProfileAchievementStats(user) {
         const profile = profileResult.data;
         if (profile) {
             stats.avatar = !!(profile.avatar_url || stats.avatar);
+            stats.createdAt = profile.created_at || stats.createdAt;
             if (profile.created_at) {
                 stats.accountAgeDays = Math.max(0, Math.floor((Date.now() - new Date(profile.created_at).getTime()) / 86400000));
             }
