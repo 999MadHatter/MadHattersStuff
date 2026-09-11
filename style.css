@@ -3195,3 +3195,680 @@ button {
     min-height: 44px;
     box-sizing: border-box;
 }
+
+/* ============================================================
+   ACCOUNT SETTINGS — AFTERHOURS 2.0
+============================================================ */
+
+:root {
+    --afterhours-accent: #8b5cf6;
+}
+
+.settings-button {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    padding: 0;
+    background: rgba(0, 0, 0, .9);
+    backdrop-filter: blur(9px);
+}
+
+.settings-panel {
+    width: min(1180px, 100vw);
+    height: min(100vh, 900px);
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #101117;
+    color: #fff;
+    border-left: 1px solid #30313d;
+    border-right: 1px solid #30313d;
+    box-shadow: 0 30px 100px rgba(0,0,0,.8);
+}
+
+.settings-header {
+    min-height: 92px;
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #30313d;
+}
+
+.settings-header h2 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 900;
+}
+
+.settings-header p {
+    margin: 5px 0 0;
+    color: #9d9daa;
+    font-size: 13px;
+}
+
+.settings-close {
+    width: 42px;
+    height: 42px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: #d0ced7;
+    font-size: 26px;
+}
+
+.settings-close:hover {
+    background: #292a32;
+    border-color: #4b4c58;
+    color: #fff;
+}
+
+.settings-body {
+    min-height: 0;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 265px minmax(0, 1fr);
+}
+
+.settings-nav {
+    overflow-y: auto;
+    padding: 18px 14px;
+    border-right: 1px solid #30313d;
+    background: #14151b;
+}
+
+.settings-nav-item {
+    width: 100%;
+    min-height: 62px;
+    margin: 2px 0;
+    padding: 10px 13px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: transparent;
+    color: #b9b8c3;
+    text-align: left;
+    font-size: 21px;
+}
+
+.settings-nav-item span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.settings-nav-item b {
+    color: #e8e7ed;
+    font-size: 14px;
+}
+
+.settings-nav-item small {
+    color: #858590;
+    font-size: 11px;
+}
+
+.settings-nav-item:hover,
+.settings-nav-item.active {
+    background: rgba(139,92,246,.13);
+    border-color: rgba(139,92,246,.35);
+    color: #c7aaff;
+}
+
+.settings-content {
+    overflow-y: auto;
+    padding: 25px 30px 45px;
+}
+
+.settings-section {
+    display: none;
+    max-width: 820px;
+}
+
+.settings-section.active {
+    display: block;
+}
+
+.settings-section-heading {
+    margin: 0 0 12px;
+}
+
+.settings-section-heading h3 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.settings-section-heading p {
+    margin: 5px 0 0;
+    color: #92929e;
+    font-size: 12px;
+}
+
+.settings-card {
+    margin-bottom: 25px;
+    padding: 16px;
+    border: 1px solid #333541;
+    border-radius: 13px;
+    background: #14151b;
+}
+
+.settings-profile-row {
+    display: grid;
+    grid-template-columns: 105px minmax(0,1fr);
+    gap: 20px;
+}
+
+.settings-avatar {
+    width: 94px;
+    height: 94px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 3px solid var(--afterhours-accent);
+    border-radius: 50%;
+    background: #30313d;
+    color: #fff;
+    font-size: 32px;
+    font-weight: 900;
+}
+
+.settings-profile-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 13px;
+}
+
+.settings-profile-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: #9998a5;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.settings-profile-fields label:last-child {
+    grid-column: 1 / -1;
+}
+
+.settings-profile-fields input,
+.settings-profile-fields textarea,
+.settings-row select,
+.settings-input-with-action input {
+    width: 100%;
+    min-height: 40px;
+    padding: 9px 11px;
+    border: 1px solid #3c3d49;
+    border-radius: 9px;
+    outline: none;
+    background: #0f1015;
+    color: #fff;
+    font-size: 13px;
+}
+
+.settings-profile-fields textarea {
+    resize: vertical;
+}
+
+.settings-profile-fields input:focus,
+.settings-profile-fields textarea:focus,
+.settings-row select:focus {
+    border-color: var(--afterhours-accent);
+}
+
+.settings-input-with-action {
+    display: flex;
+    gap: 7px;
+}
+
+.settings-input-with-action button {
+    min-width: 62px;
+    border: 1px solid #454652;
+    border-radius: 9px;
+    background: #1b1c23;
+    color: #fff;
+    font-weight: 800;
+}
+
+.settings-actions {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-actions span {
+    color: #7fe49a;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.settings-list-card {
+    padding: 8px 16px;
+}
+
+.settings-row {
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-bottom: 1px solid #282933;
+}
+
+.settings-row:last-child {
+    border-bottom: 0;
+}
+
+.settings-row > span {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    font-size: 20px;
+}
+
+.settings-row > span > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.settings-row b {
+    color: #e8e7ed;
+    font-size: 13px;
+}
+
+.settings-row small {
+    color: #858590;
+    font-size: 11px;
+}
+
+.settings-row .secondary-button {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 12px;
+}
+
+.settings-color {
+    width: 125px;
+    height: 38px;
+    padding: 3px;
+    border: 1px solid #3c3d49;
+    border-radius: 9px;
+    background: #0f1015;
+    cursor: pointer;
+}
+
+.settings-switch input {
+    display: none;
+}
+
+.settings-switch span {
+    width: 44px;
+    height: 24px;
+    display: block;
+    position: relative;
+    border-radius: 999px;
+    background: #3a3b45;
+    transition: .15s ease;
+}
+
+.settings-switch span::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: .15s ease;
+}
+
+.settings-switch input:checked + span {
+    background: var(--afterhours-accent);
+}
+
+.settings-switch input:checked + span::after {
+    transform: translateX(20px);
+}
+
+.settings-store-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.settings-store-card div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.settings-store-card b {
+    font-size: 13px;
+}
+
+.settings-store-card span {
+    color: var(--afterhours-accent);
+    font-size: 16px;
+    font-weight: 900;
+}
+
+body.afterhours-large-text {
+    font-size: 106%;
+}
+
+body.afterhours-large-text .messages,
+body.afterhours-large-text .message-input {
+    font-size: 16px;
+}
+
+@media (max-width: 850px) {
+    .settings-panel {
+        height: 100vh;
+    }
+
+    .settings-body {
+        grid-template-columns: 190px minmax(0,1fr);
+    }
+
+    .settings-nav-item small {
+        display: none;
+    }
+
+    .settings-content {
+        padding: 20px;
+    }
+
+    .settings-profile-row,
+    .settings-profile-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-profile-fields label:last-child {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .settings-body {
+        display: block;
+    }
+
+    .settings-nav {
+        display: flex;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid #30313d;
+        padding: 8px;
+    }
+
+    .settings-nav-item {
+        min-width: 130px;
+        min-height: 48px;
+    }
+
+    .settings-nav-item span {
+        gap: 0;
+    }
+
+    .settings-nav-item b {
+        font-size: 12px;
+    }
+
+    .settings-header {
+        padding: 16px;
+    }
+}
+\n\n/* ============================================================\n   ACCOUNT SETTINGS — GLOBAL ACCENT COLOR\n   The user's selected accent is applied consistently across the UI.\n============================================================ */\n\n:root {\n    --afterhours-accent: #8b5cf6;\n    --afterhours-accent-rgb: 139, 92, 246;\n    --afterhours-accent-soft: rgba(139, 92, 246, .14);\n    --afterhours-accent-border: rgba(139, 92, 246, .42);\n    --afterhours-accent-glow: rgba(139, 92, 246, .24);\n}\n\n/* Sidebar and navigation */\n.room.active,\n.messages-button.active,\n.friends-button.active,\n.notifications-button.active,\n.store-button.active {\n    background: var(--afterhours-accent-soft);\n    border-color: var(--afterhours-accent-border);\n    color: var(--afterhours-accent);\n}\n\n.room:hover,\n.messages-button:hover,\n.friends-button:hover,\n.notifications-button:hover,\n.store-button:hover,\n.profile-button:hover {\n    border-color: var(--afterhours-accent-border);\n}\n\n/* Keyboard focus and inputs */\nbutton:focus-visible,\ninput:focus,\ntextarea:focus,\nselect:focus {\n    outline-color: var(--afterhours-accent);\n}\n\n.message-input:focus,\n.user-search-wrap input:focus,\n.auth-card input:focus,\n.editor-fields input:focus,\n.editor-fields textarea:focus,\n.editor-fields select:focus {\n    border-color: var(--afterhours-accent);\n    box-shadow: 0 0 0 2px var(--afterhours-accent-glow);\n}\n\n/* Common interactive accents */\n.back-button:hover,\n.notifications-header button:hover,\n.inbox-back-button:hover,\n.clickable-profile:hover,\n.friend-row-name:hover,\n.message-username:hover {\n    color: var(--afterhours-accent);\n}\n\n.notification-item.unread,\n.inbox-item.unread {\n    border-left-color: var(--afterhours-accent);\n}\n\n.notification-unread-dot,\n.notification-dot-visible::after {\n    background: var(--afterhours-accent) !important;\n}\n\n.notifications-button.has-unread {\n    border-color: var(--afterhours-accent-border);\n}\n\n/* Profile / account highlights */\n.profile-avatar,\n.settings-avatar {\n    border-color: var(--afterhours-accent);\n}\n\n.profile-rank {\n    box-shadow: 0 0 0 1px var(--afterhours-accent-border);\n}\n\n/* Switches, tabs, and editor selections */\n.settings-switch input:checked + span {\n    background: var(--afterhours-accent);\n}\n\n.editor-tab.active,\n.editor-sidebar-item.active,\n.friends-tab.active {\n    color: var(--afterhours-accent);\n    border-color: var(--afterhours-accent-border);\n    background: var(--afterhours-accent-soft);\n}\n\n/* Store and other accent labels */\n.store-card-price,\n.settings-store-card span {\n    color: var(--afterhours-accent);\n}\n\n/* Keep the chosen color visible in the Settings color control itself. */\n.settings-color {\n    background: var(--afterhours-accent) !important;\n}\n
+
+/* Account Settings behavior */
+body.afterhours-hide-timestamps .message-timestamp { display: none !important; }
+.typing-indicator { min-height: 18px; padding: 3px 18px 0; color: var(--afterhours-accent, #8b5cf6); font-size: 11px; font-weight: 700; }
+
+/* Light theme: keeps the same layout while changing the surface/text palette. */
+body.afterhours-light-theme { background: #f3f4f7 !important; color: #171820 !important; }
+body.afterhours-light-theme .chat-layout,
+body.afterhours-light-theme .chat-area,
+body.afterhours-light-theme .members-sidebar,
+body.afterhours-light-theme .sidebar,
+body.afterhours-light-theme .settings-panel,
+body.afterhours-light-theme .settings-content,
+body.afterhours-light-theme .settings-nav,
+body.afterhours-light-theme .editor-panel,
+body.afterhours-light-theme .modal-card,
+body.afterhours-light-theme .friends-panel,
+body.afterhours-light-theme .store-panel { background: #f3f4f7 !important; color: #171820 !important; }
+body.afterhours-light-theme .chat-header,
+body.afterhours-light-theme .members-sidebar,
+body.afterhours-light-theme .settings-header,
+body.afterhours-light-theme .settings-nav,
+body.afterhours-light-theme .settings-card,
+body.afterhours-light-theme .settings-row,
+body.afterhours-light-theme .editor-sidebar { border-color: #d6d8df !important; }
+body.afterhours-light-theme .messages { background: #ffffff !important; }
+body.afterhours-light-theme .message-display-name,
+body.afterhours-light-theme .message-username,
+body.afterhours-light-theme .chat-header h2,
+body.afterhours-light-theme .members-sidebar h3,
+body.afterhours-light-theme .settings-header h2,
+body.afterhours-light-theme .settings-section-heading h3,
+body.afterhours-light-theme .settings-row b,
+body.afterhours-light-theme .settings-nav-item { color: #171820 !important; }
+body.afterhours-light-theme .message-content p,
+body.afterhours-light-theme .room-subheader p { color: #3d404b !important; }
+body.afterhours-light-theme input,
+body.afterhours-light-theme textarea,
+body.afterhours-light-theme select,
+body.afterhours-light-theme .message-input,
+body.afterhours-light-theme .settings-card { background: #ffffff !important; color: #171820 !important; }
+body.afterhours-light-theme .settings-nav-item.active { background: var(--afterhours-accent-soft) !important; }
+body.afterhours-light-theme .sidebar-bottom { border-color: #d6d8df !important; }
+
+@media (prefers-color-scheme: light) {
+    body.afterhours-system-theme { background: #f3f4f7 !important; color: #171820 !important; }
+    body.afterhours-system-theme .chat-layout,
+    body.afterhours-system-theme .chat-area,
+    body.afterhours-system-theme .members-sidebar,
+    body.afterhours-system-theme .sidebar,
+    body.afterhours-system-theme .settings-panel,
+    body.afterhours-system-theme .settings-content,
+    body.afterhours-system-theme .settings-nav,
+    body.afterhours-system-theme .settings-card,
+    body.afterhours-system-theme .editor-panel,
+    body.afterhours-system-theme .friends-panel,
+    body.afterhours-system-theme .store-panel { background: #f3f4f7 !important; color: #171820 !important; }
+}
+
+
+/* ============================================================
+   PROFILE 2.0
+============================================================ */
+#profileModal.modal:not(.hidden) {
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 14px;
+}
+
+#profileModal .profile-layout {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: min(920px, 96vw);
+    width: 100%;
+}
+
+#profileModal .profile-card {
+    flex: 0 0 350px;
+    width: 350px;
+    box-sizing: border-box;
+    padding: 38px 26px 24px;
+    text-align: center;
+}
+
+#profileModal .profile-info-column {
+    flex: 1 1 440px;
+    min-width: 0;
+    max-height: min(78vh, 720px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 2px;
+}
+
+.profile-info-section {
+    padding: 16px 18px;
+    border: 2px solid #30313d;
+    border-radius: 14px;
+    background: #121319;
+    text-align: left;
+}
+
+.profile-info-section h3 {
+    margin: 0 0 11px;
+    color: #aaa8b3;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.profile-info-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #d8d6df;
+    font-size: 14px;
+    font-weight: 650;
+    margin-top: 8px;
+}
+
+.profile-info-row:first-of-type { margin-top: 0; }
+.profile-info-row strong { color: #fff; }
+.profile-online-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: #67e886;
+    box-shadow: 0 0 0 2px rgba(103,232,134,.12);
+}
+
+.profile-roles-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.profile-roles-list .profile-rank { margin: 0 !important; }
+
+.profile-status-circle {
+    width: 10px;
+    height: 10px;
+    border: 2px solid #b7b6c1;
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+
+.achievements-section {
+    border-color: #41435a;
+}
+
+.achievements-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.achievements-heading h3 { margin-bottom: 0; }
+
+.achievements-count-button {
+    border: 0;
+    background: transparent;
+    color: #d8d6df;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 0;
+}
+
+.achievements-count-button:hover { color: #fff; }
+
+.profile-achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 13px 10px;
+    margin-top: 15px;
+}
+
+.profile-achievement {
+    min-width: 0;
+    text-align: center;
+    color: #e4e2ea;
+}
+
+.profile-achievement-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #62657a;
+    border-radius: 50%;
+    background: #20222c;
+    font-size: 21px;
+    box-sizing: border-box;
+}
+
+.profile-achievement.unlocked .profile-achievement-icon {
+    border-color: #7376ff;
+    background: #252442;
+    box-shadow: 0 0 14px rgba(115,118,255,.16);
+}
+
+.profile-achievement.locked { opacity: .45; }
+.profile-achievement-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.profile-friends-preview { cursor: default; }
+.profile-friends-preview #profileFriendsCount {
+    color: #bcbac5;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+    #profileModal.modal:not(.hidden) { overflow-y: auto; padding: 18px; }
+    #profileModal .profile-layout { max-height: none; flex-direction: column; width: min(560px, 100%); }
+    #profileModal .profile-card { flex-basis: auto; width: 100%; }
+    #profileModal .profile-info-column { width: 100%; max-height: none; overflow: visible; }
+}
+
+@media (max-width: 520px) {
+    .profile-achievements-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

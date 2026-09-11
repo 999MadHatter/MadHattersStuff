@@ -182,6 +182,11 @@
                         <span id="topUsername">User</span>
                     </button>
 
+                    <button id="settingsButton" type="button" class="messages-button settings-button">
+                        <span class="messages-button-icon">⚙️</span>
+                        <span class="messages-button-label">Settings</span>
+                    </button>
+
                     <button id="logoutButton" type="button" class="secondary-button">
                         Log Out
                     </button>
@@ -196,6 +201,7 @@
                         <p id="roomDescription">Talk. Connect. Chill.</p>
                         <span id="broadcastMessage" class="broadcast-message hidden"></span>
                     </div>
+                    <div id="typingIndicator" class="typing-indicator hidden" aria-live="polite"></div>
                 </header>
 
                 <div id="messages" class="messages">
@@ -396,63 +402,156 @@
 
     <!-- PROFILE MODAL -->
     <div id="profileModal" class="modal hidden">
-        <div class="modal-card profile-card">
-            <button
-                id="closeProfileButton"
-                type="button"
-                class="close-button"
-            >
-                ×
-            </button>
+        <div class="profile-layout">
+            <div class="modal-card profile-card">
+                <button id="closeProfileButton" type="button" class="close-button">×</button>
 
-            <div class="profile-hero">
-                <div id="profileAvatar" class="large-avatar">
-                    ?
+                <div class="profile-hero">
+                    <div id="profileAvatar" class="large-avatar">?</div>
+                    <h2 id="profileName">User</h2>
+                    <p id="profileUsername" class="profile-username">@username</p>
+                    <span id="profileRole" class="profile-rank">Member</span>
                 </div>
 
-                <h2 id="profileName">User</h2>
+                <p id="profileBio" class="profile-bio">No bio yet.</p>
 
-                <p id="profileUsername" class="profile-username">
-                    @username
-                </p>
-
-                <span id="profileRole" class="profile-rank">
-                    Member
-                </span>
+                <div class="profile-card-actions">
+                    <button id="messageProfileButton" type="button" class="profile-message-button full-button hidden">💬 Message</button>
+                    <button id="profileFriendButton" type="button" class="profile-friend-button full-button hidden">👥 Add Friend</button>
+                    <button id="editProfileButton" type="button" class="profile-edit-button full-button">Edit Profile</button>
+                </div>
             </div>
 
-            <p id="profileBio" class="profile-bio">
-                No bio yet.
-            </p>
+            <div class="profile-info-column">
+                <section class="profile-info-section">
+                    <h3>ABOUT</h3>
+                    <div class="profile-info-row"><span>📅</span><span>Joined <strong id="profileJoined">—</strong></span></div>
+                    <div class="profile-info-row"><span>📍</span><span id="profileStatusText">Online <i class="profile-online-dot"></i></span></div>
+                </section>
 
-            <div class="profile-card-actions">
-                <button
-                    id="messageProfileButton"
-                    type="button"
-                    class="profile-message-button full-button hidden"
-                >
-                    💬 Message
-                </button>
+                <section class="profile-info-section">
+                    <h3>ROLES</h3>
+                    <div id="profileRoles" class="profile-roles-list"></div>
+                </section>
 
-                <button
-                    id="profileFriendButton"
-                    type="button"
-                    class="profile-friend-button full-button hidden"
-                >
-                    👥 Add Friend
-                </button>
+                <section class="profile-info-section">
+                    <h3>STATUS</h3>
+                    <div class="profile-info-row"><span class="profile-status-circle"></span><span id="profileStatusValue">Online</span></div>
+                </section>
 
-                <button
-                    id="editProfileButton"
-                    type="button"
-                    class="profile-edit-button full-button"
-                >
-                    Edit Profile
-                </button>
+                <section class="profile-info-section achievements-section">
+                    <div class="achievements-heading">
+                        <h3>🏆 ACHIEVEMENTS</h3>
+                        <button id="profileAchievementsButton" type="button" class="achievements-count-button">0 / 15 unlocked ›</button>
+                    </div>
+                    <div id="profileAchievements" class="profile-achievements-grid"></div>
+                </section>
+
+                <section class="profile-info-section profile-friends-preview">
+                    <div class="achievements-heading">
+                        <h3>👥 FRIENDS</h3>
+                        <span>›</span>
+                    </div>
+                    <div id="profileFriendsCount">0 friends</div>
+                </section>
             </div>
         </div>
 
         <div id="permissionPanel" class="permission-panel hidden"></div>
+    </div>
+
+    <!-- ACCOUNT SETTINGS -->
+    <div id="settingsModal" class="settings-overlay hidden" aria-hidden="true">
+        <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+            <header class="settings-header">
+                <div>
+                    <h2 id="settingsTitle">⚙️ Account Settings</h2>
+                    <p>Manage your account, preferences, and privacy settings.</p>
+                </div>
+                <button id="closeSettingsButton" type="button" class="settings-close">×</button>
+            </header>
+
+            <div class="settings-body">
+                <aside class="settings-nav">
+                    <button class="settings-nav-item active" data-settings-section="account">👤<span><b>Account</b><small>Profile, username, email</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="appearance">🎨<span><b>Appearance</b><small>Theme, colors, display</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="notifications">🔔<span><b>Notifications</b><small>Alerts, sounds, messages</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="privacy">🛡️<span><b>Privacy &amp; Security</b><small>Blocking, data, sessions</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="chat">💬<span><b>Chat</b><small>Message settings, media</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="social">👥<span><b>Social</b><small>Friends, invites, status</small></span></button>
+                    <button class="settings-nav-item" data-settings-section="store">🛒<span><b>Store</b><small>Purchases, ranks, payments</small></span></button>
+                </aside>
+
+                <main class="settings-content">
+                    <section class="settings-section active" data-settings-content="account">
+                        <div class="settings-section-heading"><h3>Profile Information</h3><p>This information is visible to other users on your profile.</p></div>
+                        <div class="settings-card profile-settings-card">
+                            <div class="settings-profile-row">
+                                <div id="settingsAvatar" class="settings-avatar">?</div>
+                                <div class="settings-profile-fields">
+                                    <label>Display Name<input id="settingsDisplayName" maxlength="40"></label>
+                                    <label>Username<div class="settings-input-with-action"><input id="settingsUsername" maxlength="32" pattern="[A-Za-z0-9_]{3,32}"><button type="button" id="settingsEditProfileButton">Edit</button></div></label>
+                                    <label>Bio<textarea id="settingsBio" maxlength="160" rows="3"></textarea></label>
+                                </div>
+                            </div>
+                            <div class="settings-actions"><button id="settingsSaveProfile" class="primary-button" type="button">Save Profile</button><span id="settingsProfileStatus"></span></div>
+                        </div>
+                        <div class="settings-section-heading"><h3>Account Details</h3><p>Your account and login information.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>✉️<div><b>Email</b><small id="settingsEmailValue">Not available</small></div></span><button id="settingsChangeEmail" class="secondary-button" type="button">Change</button></div>
+                            <div class="settings-row"><span>🔒<div><b>Password</b><small>••••••••</small></div></span><button id="settingsChangePassword" class="secondary-button" type="button">Change</button></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="appearance">
+                        <div class="settings-section-heading"><h3>Display Preferences</h3><p>Customize how Afterhours looks and feels for you.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>🌙<div><b>Theme</b><small>Afterhours currently uses the dark theme.</small></div></span><select id="settingsTheme"><option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option></select></div>
+                            <div class="settings-row"><span>🎨<div><b>Accent Color</b><small>Choose your preferred interface accent.</small></div></span><input id="settingsAccent" class="settings-color" type="color" value="#8b5cf6"></div>
+                            <div class="settings-row"><span>🔤<div><b>Font Size</b><small>Adjust interface text size.</small></div></span><select id="settingsFontSize"><option value="normal">Normal</option><option value="large">Large</option></select></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="notifications">
+                        <div class="settings-section-heading"><h3>Notification Preferences</h3><p>Control how Afterhours alerts you.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>🔔<div><b>Browser Notifications</b><small>Allow notifications while Afterhours is open.</small></div></span><button id="settingsBrowserNotifications" class="secondary-button" type="button">Manage</button></div>
+                            <div class="settings-row"><span>💬<div><b>Message Notifications</b><small>Get notified about new messages and DMs.</small></div></span><label class="settings-switch"><input id="settingsMessageNotifications" type="checkbox" checked><span></span></label></div>
+                            <div class="settings-row"><span>👥<div><b>Friend Requests</b><small>Notify me about incoming friend requests.</small></div></span><label class="settings-switch"><input id="settingsFriendNotifications" type="checkbox" checked><span></span></label></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="privacy">
+                        <div class="settings-section-heading"><h3>Privacy &amp; Security</h3><p>Control account visibility and local privacy preferences.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>🟢<div><b>Online Status</b><small>Show your online status to other users.</small></div></span><label class="settings-switch"><input id="settingsShowOnline" type="checkbox" checked><span></span></label></div>
+                            <div class="settings-row"><span>🧹<div><b>Clear Local Preferences</b><small>Reset saved display and notification preferences on this device.</small></div></span><button id="settingsClearLocal" class="secondary-button" type="button">Reset</button></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="chat">
+                        <div class="settings-section-heading"><h3>Chat Settings</h3><p>Control how messages appear and behave.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>✍️<div><b>Show Typing Indicators</b><small>Let others see when you're typing.</small></div></span><label class="settings-switch"><input id="settingsTyping" type="checkbox" checked><span></span></label></div>
+                            <div class="settings-row"><span>🕒<div><b>Message Timestamps</b><small>Show message dates and times.</small></div></span><label class="settings-switch"><input id="settingsTimestamps" type="checkbox" checked><span></span></label></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="social">
+                        <div class="settings-section-heading"><h3>Social</h3><p>Manage friend and profile interaction preferences.</p></div>
+                        <div class="settings-card settings-list-card">
+                            <div class="settings-row"><span>👥<div><b>Friend Requests</b><small>Allow other users to send you friend requests.</small></div></span><label class="settings-switch"><input id="settingsAllowFriends" type="checkbox" checked><span></span></label></div>
+                            <div class="settings-row"><span>💌<div><b>Direct Messages</b><small>Allow friends to message you.</small></div></span><label class="settings-switch"><input id="settingsAllowDMs" type="checkbox" checked><span></span></label></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section" data-settings-content="store">
+                        <div class="settings-section-heading"><h3>Store</h3><p>View your current rank and open the Afterhours Store.</p></div>
+                        <div class="settings-card settings-store-card"><div><b>Current Rank</b><span id="settingsCurrentRank">Member</span></div><button id="settingsOpenStore" class="secondary-button" type="button">Open Store</button></div>
+                    </section>
+                </main>
+            </div>
+        </section>
     </div>
 
     <!-- EDIT PROFILE MODAL -->
@@ -550,7 +649,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- APP -->
-    <script src="./app.js?v=custom-rank-pill-1"></script>
+    <script src="./app.js?v=account-settings-profile-2"></script>
 
     <script>
         document.addEventListener("click", function (event) {

@@ -374,24 +374,33 @@ function formatNotificationTime(timestamp) {
     return days + "d ago";
 }
 
+function notificationAllowedBySettings(notification) {
+    const settings = getAccountSettings();
+    if (!notification) return false;
+    if (notification.type === "friend_request" && settings.friendNotifications === false) return false;
+    if ((notification.type === "dm" || notification.type === "mention") && settings.messageNotifications === false) return false;
+    return true;
+}
+
 function renderNotifications() {
     const list = get("notificationsList");
     const badge = get("notificationBadge");
     if (!list) return;
-    const unread = notifications.filter(n => !n.read);
+    const visibleNotifications = notifications.filter(notificationAllowedBySettings);
+    const unread = visibleNotifications.filter(n => !n.read);
     if (badge) {
         badge.textContent = unread.length > 99 ? "99+" : String(unread.length);
         badge.classList.toggle("hidden", unread.length === 0);
     }
     list.innerHTML = "";
-    if (!notifications.length) {
+    if (!visibleNotifications.length) {
         const empty = document.createElement("div");
         empty.className = "notification-empty";
         empty.textContent = "You're all caught up.";
         list.appendChild(empty);
         return;
     }
-    notifications.forEach(n => {
+    visibleNotifications.forEach(n => {
         const item = document.createElement("button");
         item.type = "button";
         item.className = "notification-item" + (n.read ? "" : " unread");
@@ -933,6 +942,7 @@ async function requestBrowserNotificationPermission() {
 
 function showBrowserNotification(notification) {
     if (!notification || !browserNotificationsSupported()) return;
+    if (!notificationAllowedBySettings(notification)) return;
     if (areBrowserNotificationsMuted()) return;
     if (Notification.permission !== "granted") return;
 
@@ -1322,15 +1332,36 @@ async function loadCurrentUser() {
         throw new Error("No logged-in user found.");
     }
 
-    const { data: profile, error: profileError } =
-        await supabaseClient
+    let profile;
+    let profileError;
+    {
+        const result = await supabaseClient
+            .from("profiles")
+            .select("id, username, display_name, bio, avatar_url, role, settings")
+            .eq("id", user.id)
+            .single();
+        profile = result.data;
+        profileError = result.error;
+    }
+
+    if (profileError && (profileError.code === "42703" || profileError.code === "PGRST204" || /settings/i.test(profileError.message || ""))) {
+        const fallback = await supabaseClient
             .from("profiles")
             .select("id, username, display_name, bio, avatar_url, role")
             .eq("id", user.id)
             .single();
+        profile = fallback.data;
+        profileError = fallback.error;
+    }
 
     if (profileError) throw profileError;
     if (!profile) throw new Error("Your profile could not be loaded.");
+
+    let localSettings = {};
+    try { localSettings = JSON.parse(localStorage.getItem(AFTERHOURS_SETTINGS_KEY) || "{}") || {}; } catch (_) {}
+    const serverSettings = profile.settings && typeof profile.settings === "object" ? profile.settings : {};
+    const mergedSettings = { ...serverSettings, ...localSettings };
+    localStorage.setItem(AFTERHOURS_SETTINGS_KEY, JSON.stringify(mergedSettings));
 
     currentUser = {
         id: profile.id,
@@ -1342,10 +1373,12 @@ async function loadCurrentUser() {
             localStorage.getItem("afterhours-avatar-" + profile.id) ||
             "",
         role: getEffectiveRole(profile, user),
+        accountSettings: mergedSettings,
         muted: Boolean(currentUser.muted),
         restricted: Boolean(currentUser.restricted)
     };
 
+    applyAccountPreferences(mergedSettings);
     updateUser();
     renderStoreTestControls();
 
@@ -1354,39 +1387,39 @@ async function loadCurrentUser() {
 
 
 function applyRank(element, role) {
-
-    if (!element) {
-        return;
-    }
+    if (!element) return;
 
     const rank = getRankDefinition(role);
 
     element.className = element.className
         .split(" ")
-        .filter(function (className) {
-            return !className.startsWith("rank-") && className !== "custom-rank";
-        })
+        .filter(className => !className.startsWith("rank-") && className !== "custom-rank")
         .concat(rank.className || "rank-member")
         .join(" ");
 
-    const rankColor = rank.color || "";
-    element.style.color = rankColor;
-    element.style.backgroundColor = "";
-    element.style.borderColor = "";
+    element.style.color = rank.color || "";
 
-    // Custom ranks should look like the built-in rank pills:
-    // use the selected rank color for the border/text and a
-    // translucent version of that color for the filled background.
-    if ((rank.className || "") === "custom-rank" && /^#[0-9a-fA-F]{6}$/.test(rankColor)) {
-        const red = parseInt(rankColor.slice(1, 3), 16);
-        const green = parseInt(rankColor.slice(3, 5), 16);
-        const blue = parseInt(rankColor.slice(5, 7), 16);
-        element.style.backgroundColor = `rgba(${red}, ${green}, ${blue}, 0.22)`;
-        element.style.borderColor = rankColor;
+    // Custom ranks use their configured color as a readable dark filled pill,
+    // matching the filled treatment used by built-in ranks such as Owner.
+    if (rank.className === "custom-rank" && rank.color) {
+        const hex = String(rank.color).replace("#", "");
+        const normalized = hex.length === 3
+            ? hex.split("").map(ch => ch + ch).join("")
+            : hex;
+        const r = parseInt(normalized.slice(0, 2), 16);
+        const g = parseInt(normalized.slice(2, 4), 16);
+        const b = parseInt(normalized.slice(4, 6), 16);
+
+        if ([r, g, b].every(Number.isFinite)) {
+            element.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.24)`;
+            element.style.borderColor = rank.color;
+        }
+    } else {
+        element.style.backgroundColor = "";
+        element.style.borderColor = "";
     }
 
-    element.textContent =
-        (rank.icon || rank.badge || "🏷️") + " " + (role || "Member");
+    element.textContent = (rank.icon || rank.badge || "🏷️") + " " + (role || "Member");
 }
 
 
@@ -2076,7 +2109,47 @@ function updateUser() {
 }
 
 
+function updateTypingPreferenceUI() {
+    const indicator = get("typingIndicator");
+    if (indicator) indicator.classList.toggle("hidden", getAccountSettings().typing === false);
+}
+
+let typingStopTimer = null;
+async function updateOwnTypingState(isTyping) {
+    if (!onlinePresenceChannel || !currentUser?.id || getAccountSettings().typing === false) return;
+    try {
+        await onlinePresenceChannel.track({
+            user_id: currentUser.id,
+            username: currentUser.username,
+            display_name: currentUser.displayName,
+            avatar_url: currentUser.avatarUrl,
+            bio: currentUser.bio,
+            role: currentUser.role,
+            typing: Boolean(isTyping)
+        });
+    } catch (_) {}
+}
+
+function renderTypingIndicatorFromPresence() {
+    const indicator = get("typingIndicator");
+    if (!indicator || getAccountSettings().typing === false) { indicator?.classList.add("hidden"); return; }
+    const state = onlinePresenceChannel?.presenceState?.() || {};
+    const names = [];
+    Object.values(state).flat().forEach(entry => {
+        if (entry?.typing && entry.user_id !== currentUser?.id) names.push(entry.display_name || entry.username || "Someone");
+    });
+    const unique = [...new Set(names)];
+    if (!unique.length) { indicator.classList.add("hidden"); return; }
+    indicator.textContent = unique.length === 1 ? `${unique[0]} is typing...` : `${unique.slice(0,2).join(" and ")}${unique.length > 2 ? ` and ${unique.length - 2} others` : ""} are typing...`;
+    indicator.classList.remove("hidden");
+}
+
 async function startOnlinePresence() {
+
+    if (getAccountSettings().showOnline === false) {
+        updateOnlineUsers([]);
+        return;
+    }
 
     if (
         !supabaseClient ||
@@ -2150,6 +2223,7 @@ async function startOnlinePresence() {
 
             // Keep the current user's own presence visible too.
             updateOnlineUsers(users);
+            renderTypingIndicatorFromPresence();
         };
 
     channel.on(
@@ -2228,7 +2302,8 @@ async function startOnlinePresence() {
                     bio:
                         currentUser.bio,
                     role:
-                        currentUser.role
+                        currentUser.role,
+                    typing: false
                 });
 
                 renderPresence();
@@ -2286,6 +2361,8 @@ async function stopOnlinePresence() {
     onlinePresenceChannel = null;
 
     updateOnlineUsers([]);
+    const typingIndicator = get("typingIndicator");
+    typingIndicator?.classList.add("hidden");
 }
 
 
@@ -2412,6 +2489,129 @@ function updateOnlineUsers(
 
 
 // ============================================================
+// PROFILE ACHIEVEMENTS
+// ============================================================
+
+const PROFILE_ACHIEVEMENTS = [
+    { id: "first_night", icon: "🌙", name: "First Night", test: s => s.messages >= 1 },
+    { id: "chatterbox", icon: "💬", name: "Chatterbox", test: s => s.messages >= 100 },
+    { id: "social", icon: "👥", name: "Social Butterfly", test: s => s.friends >= 1 },
+    { id: "gamer", icon: "🎮", name: "Gamer", test: s => s.gamingMessages >= 1 },
+    { id: "talkative", icon: "💬", name: "Talkative", test: s => s.messages >= 1000 },
+    { id: "music", icon: "🎵", name: "Music Lover", test: s => s.musicMessages >= 1 },
+    { id: "explorer", icon: "🧭", name: "Explorer", test: s => s.rooms >= 5 },
+    { id: "og", icon: "🏆", name: "OG", test: s => s.accountAgeDays >= 100 },
+    { id: "inbox", icon: "📨", name: "Inbox", test: s => s.dmMessages >= 1 },
+    { id: "connected", icon: "🔔", name: "Connected", test: s => s.notifications >= 1 },
+    { id: "say_cheese", icon: "📸", name: "Say Cheese", test: s => !!s.avatar },
+    { id: "veteran", icon: "⭐", name: "Veteran", test: s => s.accountAgeDays >= 30 },
+    { id: "vip", icon: "⭐", name: "VIP", test: s => ["VIP", "VIP+"].includes(s.role) },
+    { id: "supporter", icon: "💎", name: "Supporter", test: s => ["VIP", "VIP+"].includes(s.role) },
+    { id: "custom_made", icon: "🎨", name: "Custom Made", test: s => !!s.isCustomRole }
+];
+
+async function loadProfileAchievementStats(user) {
+    const stats = {
+        messages: 0,
+        gamingMessages: 0,
+        musicMessages: 0,
+        rooms: 0,
+        friends: 0,
+        dmMessages: 0,
+        notifications: 0,
+        avatar: !!user.avatarUrl,
+        role: getEffectiveRole(user, user),
+        accountAgeDays: 0,
+        isCustomRole: false
+    };
+
+    if (!supabaseClient || !user?.id) return stats;
+
+    try {
+        const profileResult = await supabaseClient
+            .from("profiles")
+            .select("id, created_at, avatar_url, role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        const profile = profileResult.data;
+        if (profile) {
+            stats.avatar = !!(profile.avatar_url || stats.avatar);
+            if (profile.created_at) {
+                stats.accountAgeDays = Math.max(0, Math.floor((Date.now() - new Date(profile.created_at).getTime()) / 86400000));
+            }
+            stats.role = getEffectiveRole(profile, profile);
+            stats.isCustomRole = !!(profile.role && !["Owner","Developer","Admin","Moderator","Helper","VIP","VIP+","OG","Member"].includes(profile.role));
+        }
+
+        const [allMessages, gaming, music, dm, notifications, friends] = await Promise.all([
+            supabaseClient.from("messages").select("id, room", { count: "exact", head: false }).eq("user_id", user.id).limit(5000),
+            supabaseClient.from("messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("room", "gaming"),
+            supabaseClient.from("messages").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("room", "music"),
+            supabaseClient.from("dm_messages").select("id", { count: "exact", head: true }).eq("sender_id", user.id),
+            supabaseClient.from("notifications").select("id", { count: "exact", head: true }).eq("recipient_id", user.id),
+            supabaseClient.from("friend_requests").select("id, sender_id, receiver_id", { count: "exact", head: false }).eq("status", "accepted").or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).limit(500)
+        ]);
+
+        stats.messages = allMessages.count ?? (allMessages.data?.length || 0);
+        stats.gamingMessages = gaming.count || 0;
+        stats.musicMessages = music.count || 0;
+        stats.dmMessages = dm.count || 0;
+        stats.notifications = notifications.count || 0;
+        stats.friends = (friends.data || []).filter(r => r.sender_id !== r.receiver_id).length;
+        stats.rooms = new Set((allMessages.data || []).map(m => m.room).filter(Boolean)).size;
+    } catch (error) {
+        console.warn("Profile achievement stats unavailable:", error);
+    }
+
+    return stats;
+}
+
+async function renderProfileAchievements(user) {
+    const grid = get("profileAchievements");
+    const countButton = get("profileAchievementsButton");
+    if (!grid) return;
+
+    grid.innerHTML = PROFILE_ACHIEVEMENTS.map(a => `
+        <div class="profile-achievement locked" data-achievement="${a.id}">
+            <div class="profile-achievement-icon">🔒</div>
+            <span class="profile-achievement-name">${a.name}</span>
+        </div>
+    `).join("");
+
+    const stats = await loadProfileAchievementStats(user);
+    const unlocked = PROFILE_ACHIEVEMENTS.filter(a => {
+        try { return !!a.test(stats); } catch { return false; }
+    });
+
+    PROFILE_ACHIEVEMENTS.forEach(a => {
+        const item = grid.querySelector(`[data-achievement="${a.id}"]`);
+        if (!item) return;
+        const isUnlocked = unlocked.some(x => x.id === a.id);
+        item.classList.toggle("unlocked", isUnlocked);
+        item.classList.toggle("locked", !isUnlocked);
+        const icon = item.querySelector(".profile-achievement-icon");
+        if (icon) icon.textContent = isUnlocked ? a.icon : "🔒";
+    });
+
+    if (countButton) countButton.textContent = `${unlocked.length} / ${PROFILE_ACHIEVEMENTS.length} unlocked ›`;
+    const friendsCount = get("profileFriendsCount");
+    if (friendsCount) friendsCount.textContent = `${stats.friends} friend${stats.friends === 1 ? "" : "s"}`;
+}
+
+function renderProfileRoleList(role) {
+    const host = get("profileRoles");
+    if (!host) return;
+    host.innerHTML = "";
+    const rank = document.createElement("span");
+    rank.className = "profile-rank";
+    applyRank(rank, role);
+    host.appendChild(rank);
+}
+
+
+
+// ============================================================
 // PROFILE
 // ============================================================
 
@@ -2420,77 +2620,80 @@ function openProfile() {
 }
 
 
-function openUserProfile(user) {
+async function openUserProfile(user) {
 
-    const modal =
-        get("profileModal");
+    const modal = get("profileModal");
+    if (!modal) return;
 
-    const name =
-        user.displayName ||
-        user.username ||
-        "User";
+    const name = user.displayName || user.username || "User";
+    viewedProfileUser = user;
 
-    viewedProfileUser =
-        user;
-
-    if (modal) {
-
-        get("profileName").textContent =
-            name;
-
-        get("profileUsername").textContent =
-            "@" +
-            (user.username || "user");
-
-        // Always resolve the target's effective rank (including Owner).
-        // This prevents an Owner profile from being displayed as Member when
-        // the stored profiles.role value is stale or generic.
-        const effectiveProfileRole = getEffectiveRole(user, user);
-
-        applyRank(
-            get("profileRole"),
-            effectiveProfileRole
-        );
-
-        get("profileBio").textContent =
-            user.bio ||
-            "No bio yet.";
-
-        updateAvatar(
-            get("profileAvatar"),
-            name,
-            user.avatarUrl
-        );
-
-        modal.dataset.rank =
-            String(effectiveProfileRole || "member")
-                .toLowerCase();
-
-        const isOwnProfile =
-            user.id === currentUser.id;
-
-        updateProfileFriendButton(user.id);
-
-        get("editProfileButton").classList.toggle(
-            "hidden",
-            !isOwnProfile
-        );
-
-        const messageButton =
-            get("messageProfileButton");
-
-        if (messageButton) {
-
-            messageButton.classList.toggle(
-                "hidden",
-                isOwnProfile
-            );
+    // Pull the latest profile record so the redesigned profile can show
+    // accurate join date, avatar, role and custom-rank information.
+    let profile = user;
+    if (supabaseClient && user.id) {
+        try {
+            const result = await supabaseClient
+                .from("profiles")
+                .select("id, username, display_name, bio, avatar_url, role, created_at")
+                .eq("id", user.id)
+                .maybeSingle();
+            if (result.data) {
+                profile = {
+                    ...user,
+                    id: result.data.id,
+                    username: result.data.username || user.username,
+                    displayName: result.data.display_name || user.displayName || result.data.username,
+                    bio: result.data.bio || "No bio yet.",
+                    avatarUrl: result.data.avatar_url || user.avatarUrl || "",
+                    role: getEffectiveRole(result.data, result.data),
+                    created_at: result.data.created_at
+                };
+                viewedProfileUser = profile;
+            }
+        } catch (error) {
+            console.warn("Profile refresh failed:", error);
         }
-
-        renderPermissionPanel(user);
-
-        modal.classList.remove("hidden");
     }
+
+    get("profileName").textContent = profile.displayName || profile.username || name;
+    get("profileUsername").textContent = "@" + (profile.username || "user");
+
+    const effectiveProfileRole = getEffectiveRole(profile, profile);
+    applyRank(get("profileRole"), effectiveProfileRole);
+    renderProfileRoleList(effectiveProfileRole);
+
+    get("profileBio").textContent = profile.bio || "No bio yet.";
+    updateAvatar(get("profileAvatar"), profile.displayName || profile.username || "User", profile.avatarUrl || "");
+
+    const joined = get("profileJoined");
+    if (joined) {
+        joined.textContent = profile.created_at
+            ? new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+            : "—";
+    }
+
+    const isOnline = profile.id === currentUser.id || user.isOnline === true;
+    const statusText = isOnline ? "Online" : "Offline";
+    const status = get("profileStatusText");
+    if (status) status.innerHTML = `${statusText} <i class="profile-online-dot${isOnline ? "" : " offline"}"></i>`;
+    const statusValue = get("profileStatusValue");
+    if (statusValue) statusValue.textContent = statusText;
+
+    modal.dataset.rank = String(effectiveProfileRole || "member").toLowerCase();
+
+    const isOwnProfile = profile.id === currentUser.id;
+    await updateProfileFriendButton(profile.id);
+    get("editProfileButton").classList.toggle("hidden", !isOwnProfile);
+
+    const messageButton = get("messageProfileButton");
+    if (messageButton) messageButton.classList.toggle("hidden", isOwnProfile);
+
+    renderPermissionPanel(profile);
+    modal.classList.remove("hidden");
+
+    // Render immediately, then replace the locked placeholders with live stats.
+    renderProfileAchievements(profile);
 }
 
 
@@ -3775,6 +3978,277 @@ async function startStoreCheckout(product) {
         alert(err?.message || "Unable to start checkout. Make sure the Afterhours server is running and Stripe is configured.");
     }
 }
+// ============================================================
+// ACCOUNT SETTINGS
+// ============================================================
+
+const AFTERHOURS_SETTINGS_KEY = "afterhours-account-settings";
+
+function getAccountSettings() {
+    try {
+        const local = JSON.parse(localStorage.getItem(AFTERHOURS_SETTINGS_KEY) || "{}") || {};
+        const server = currentUser?.accountSettings && typeof currentUser.accountSettings === "object" ? currentUser.accountSettings : {};
+        return { ...server, ...local };
+    } catch (_) {
+        return currentUser?.accountSettings || {};
+    }
+}
+
+function saveAccountSettings(patch) {
+    const next = { ...getAccountSettings(), ...patch };
+    localStorage.setItem(AFTERHOURS_SETTINGS_KEY, JSON.stringify(next));
+    if (currentUser) currentUser.accountSettings = next;
+    void persistAccountSettings(next);
+    return next;
+}
+
+async function persistAccountSettings(settings) {
+    if (!supabaseClient || !currentUser?.id) return;
+    try {
+        const { error } = await supabaseClient.from("profiles").update({ settings }).eq("id", currentUser.id);
+        if (error && error.code !== "42703" && error.code !== "PGRST204") console.warn("Account settings sync failed:", error.message || error);
+    } catch (error) {
+        console.warn("Account settings sync failed:", error);
+    }
+}
+
+function openSettings(section = "account") {
+    const modal = get("settingsModal");
+    if (!modal) return;
+
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    setSettingsSection(section);
+    loadSettingsValues();
+}
+
+function closeSettings() {
+    const modal = get("settingsModal");
+    if (modal) {
+        modal.classList.add("hidden");
+        modal.setAttribute("aria-hidden", "true");
+    }
+}
+
+function setSettingsSection(section) {
+    document.querySelectorAll("[data-settings-section]").forEach(button => {
+        button.classList.toggle("active", button.dataset.settingsSection === section);
+    });
+    document.querySelectorAll("[data-settings-content]").forEach(panel => {
+        panel.classList.toggle("active", panel.dataset.settingsContent === section);
+    });
+}
+
+async function loadSettingsValues() {
+    const settings = getAccountSettings();
+    const nameInput = get("settingsDisplayName");
+    const usernameInput = get("settingsUsername");
+    const bioInput = get("settingsBio");
+    const avatar = get("settingsAvatar");
+
+    if (nameInput) nameInput.value = currentUser.displayName || "";
+    if (usernameInput) usernameInput.value = currentUser.username ? "@" + currentUser.username : "";
+    if (bioInput) bioInput.value = currentUser.bio === "No bio yet." ? "" : (currentUser.bio || "");
+    if (avatar) updateAvatar(avatar, currentUser.displayName || currentUser.username || "User", currentUser.avatarUrl);
+
+    const email = get("settingsEmailValue");
+    if (email) {
+        try {
+            const { data } = await supabaseClient?.auth?.getUser();
+            email.textContent = data?.user?.email || "Not available";
+        } catch (_) {
+            email.textContent = "Not available";
+        }
+    }
+
+    const accent = get("settingsAccent");
+    const fontSize = get("settingsFontSize");
+    const messageNotifications = get("settingsMessageNotifications");
+    const friendNotifications = get("settingsFriendNotifications");
+    const showOnline = get("settingsShowOnline");
+    const typing = get("settingsTyping");
+    const timestamps = get("settingsTimestamps");
+    const allowFriends = get("settingsAllowFriends");
+    const allowDMs = get("settingsAllowDMs");
+
+    const theme = get("settingsTheme");
+    if (theme) theme.value = settings.theme || "dark";
+    if (accent) accent.value = settings.accent || "#8b5cf6";
+    if (fontSize) fontSize.value = settings.fontSize || "normal";
+    if (messageNotifications) messageNotifications.checked = settings.messageNotifications !== false;
+    if (friendNotifications) friendNotifications.checked = settings.friendNotifications !== false;
+    if (showOnline) showOnline.checked = settings.showOnline !== false;
+    if (typing) typing.checked = settings.typing !== false;
+    if (timestamps) timestamps.checked = settings.timestamps !== false;
+    if (allowFriends) allowFriends.checked = settings.allowFriends !== false;
+    if (allowDMs) allowDMs.checked = settings.allowDMs !== false;
+
+    applyAccountPreferences(settings);
+
+    const rank = get("settingsCurrentRank");
+    if (rank) {
+        rank.textContent = currentUser.role || "Member";
+    }
+}
+
+function applyAccountPreferences(settings = getAccountSettings()) {
+    const root = document.documentElement;
+    const accent = settings.accent || "#8b5cf6";
+    const theme = settings.theme || "dark";
+    root.style.setProperty("--afterhours-accent", accent);
+    let hex = String(accent).replace("#", "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+        const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+        root.style.setProperty("--afterhours-accent-rgb", `${r}, ${g}, ${b}`);
+        root.style.setProperty("--afterhours-accent-soft", `rgba(${r}, ${g}, ${b}, .14)`);
+        root.style.setProperty("--afterhours-accent-border", `rgba(${r}, ${g}, ${b}, .42)`);
+        root.style.setProperty("--afterhours-accent-glow", `rgba(${r}, ${g}, ${b}, .24)`);
+    }
+    const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    const light = theme === "light" || (theme === "system" && prefersLight);
+    document.body.classList.toggle("afterhours-light-theme", light);
+    document.body.classList.toggle("afterhours-system-theme", theme === "system");
+    document.body.classList.toggle("afterhours-large-text", settings.fontSize === "large");
+    document.body.classList.toggle("afterhours-hide-timestamps", settings.timestamps === false);
+    updateBrowserNotificationUI?.();
+    updateTypingPreferenceUI?.();
+}
+
+async function saveSettingsProfile() {
+    if (!supabaseClient || !currentUser.id) return;
+    const displayName = get("settingsDisplayName")?.value.trim() || "";
+    const username = get("settingsUsername")?.value.trim().replace(/^@/, "") || currentUser.username;
+    const bio = get("settingsBio")?.value.trim() || "";
+    const status = get("settingsProfileStatus");
+    if (!displayName) { if (status) status.textContent = "Display name cannot be empty."; return; }
+    if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) { if (status) status.textContent = "Username must be 3–32 characters: letters, numbers, or _."; return; }
+    if (username.toLowerCase() !== String(currentUser.username || "").toLowerCase()) {
+        const { data: taken, error: checkError } = await supabaseClient.from("profiles").select("id").ilike("username", username).neq("id", currentUser.id).maybeSingle();
+        if (checkError) { if (status) status.textContent = checkError.message || "Unable to check username."; return; }
+        if (taken) { if (status) status.textContent = "That username is already taken."; return; }
+    }
+    const { data, error } = await supabaseClient.from("profiles").update({ display_name: displayName, username, bio }).eq("id", currentUser.id).select("id, username, display_name, bio").maybeSingle();
+    if (error) { console.error("Settings profile save failed:", error); if (status) status.textContent = error.message || "Unable to save profile."; return; }
+    currentUser.username = data?.username || username;
+    currentUser.displayName = data?.display_name || displayName;
+    currentUser.bio = data?.bio || "No bio yet.";
+    updateUser();
+    if (get("topUsername")) get("topUsername").textContent = currentUser.displayName || currentUser.username || "User";
+    if (status) status.textContent = "Profile saved!";
+}
+
+async function changeAccountEmail() {
+    if (!supabaseClient) return;
+    const email = prompt("Enter your new email address:");
+    if (!email || !email.includes("@")) return;
+
+    const { error } = await supabaseClient.auth.updateUser({ email: email.trim() });
+    if (error) {
+        alert(error.message || "Unable to change your email.");
+        return;
+    }
+    alert("A confirmation link may have been sent to your new email address.");
+    loadSettingsValues();
+}
+
+async function changeAccountPassword() {
+    if (!supabaseClient) return;
+    const password = prompt("Enter your new password:");
+    if (!password) return;
+    if (password.length < 6) {
+        alert("Your password must be at least 6 characters.");
+        return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    if (error) {
+        alert(error.message || "Unable to change your password.");
+        return;
+    }
+    alert("Your password has been changed.");
+}
+
+function bindSettingsPreference(id, key, transform = value => value) {
+    const element = get(id);
+    if (!element) return;
+    element.addEventListener("change", () => {
+        const value = transform(element);
+        const settings = saveAccountSettings({ [key]: value });
+        applyAccountPreferences(settings);
+    });
+}
+
+function initSettings() {
+    get("settingsButton")?.addEventListener("click", () => openSettings("account"));
+    get("closeSettingsButton")?.addEventListener("click", closeSettings);
+    get("settingsModal")?.addEventListener("click", event => {
+        if (event.target.id === "settingsModal") closeSettings();
+    });
+
+    document.querySelectorAll("[data-settings-section]").forEach(button => {
+        button.addEventListener("click", () => setSettingsSection(button.dataset.settingsSection));
+    });
+
+    get("settingsSaveProfile")?.addEventListener("click", saveSettingsProfile);
+    get("settingsEditProfileButton")?.addEventListener("click", () => {
+        closeSettings();
+        openEditProfile();
+    });
+    get("settingsChangeEmail")?.addEventListener("click", changeAccountEmail);
+    get("settingsChangePassword")?.addEventListener("click", changeAccountPassword);
+    get("settingsOpenStore")?.addEventListener("click", () => {
+        closeSettings();
+        openStore();
+    });
+    get("settingsBrowserNotifications")?.addEventListener("click", async () => {
+        if (typeof requestBrowserNotificationPermission === "function") {
+            await requestBrowserNotificationPermission();
+        }
+    });
+    get("settingsClearLocal")?.addEventListener("click", () => {
+        if (!confirm("Reset your saved Afterhours preferences on this account and device?")) return;
+        localStorage.removeItem(AFTERHOURS_SETTINGS_KEY);
+        localStorage.removeItem(AFTERHOURS_BROWSER_NOTIFICATION_MUTE_KEY);
+        if (currentUser) currentUser.accountSettings = {};
+        void persistAccountSettings({});
+        applyAccountPreferences({});
+        loadSettingsValues();
+    });
+
+    bindSettingsPreference("settingsTheme", "theme", element => element.value);
+    bindSettingsPreference("settingsAccent", "accent", element => element.value);
+    bindSettingsPreference("settingsFontSize", "fontSize", element => element.value);
+    bindSettingsPreference("settingsMessageNotifications", "messageNotifications", element => element.checked);
+    bindSettingsPreference("settingsFriendNotifications", "friendNotifications", element => element.checked);
+    get("settingsShowOnline")?.addEventListener("change", () => {
+        const enabled = get("settingsShowOnline").checked;
+        const settings = saveAccountSettings({ showOnline: enabled });
+        applyAccountPreferences(settings);
+        if (!enabled) void stopOnlinePresence();
+        else if (currentUser?.id && !onlinePresenceChannel) void startOnlinePresence();
+    });
+    bindSettingsPreference("settingsTyping", "typing", element => element.checked);
+    bindSettingsPreference("settingsTimestamps", "timestamps", element => element.checked);
+    bindSettingsPreference("settingsAllowFriends", "allowFriends", element => element.checked);
+    bindSettingsPreference("settingsAllowDMs", "allowDMs", element => element.checked);
+
+    const messageInput = get("messageInput");
+    if (messageInput && messageInput.dataset.typingBound !== "true") {
+        messageInput.dataset.typingBound = "true";
+        messageInput.addEventListener("input", () => {
+            if (getAccountSettings().typing === false) return;
+            void updateOwnTypingState(Boolean(messageInput.value.trim()));
+            clearTimeout(typingStopTimer);
+            typingStopTimer = setTimeout(() => void updateOwnTypingState(false), 1400);
+        });
+    }
+
+    applyAccountPreferences();
+    updateTypingPreferenceUI();
+}
+
+
 // ============================================================
 // PROFILE MODAL
 // ============================================================
@@ -7191,6 +7665,16 @@ async function openDmWithUser(user) {
 
     try {
 
+        const { data: targetProfile } = await supabaseClient
+            .from("profiles")
+            .select("settings")
+            .eq("id", user.id)
+            .maybeSingle();
+        if (targetProfile?.settings?.allowDMs === false) {
+            alert("This user is not accepting direct messages right now.");
+            return;
+        }
+
         const {
             data: conversationId,
             error
@@ -7886,6 +8370,8 @@ let friendsRealtimeChannel = null;
 
 async function sendFriendRequest(targetUserId) {
     if (!supabaseClient || !currentUser.id || !targetUserId || targetUserId === currentUser.id) return;
+    const { data: targetProfile } = await supabaseClient.from("profiles").select("settings").eq("id", targetUserId).maybeSingle();
+    if (targetProfile?.settings?.allowFriends === false) { alert("This user is not accepting friend requests right now."); return; }
     const { data: existing, error: checkError } = await supabaseClient.from("friend_requests").select("id,status,sender_id,receiver_id").or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`).in("status", ["pending","accepted"]).limit(1).maybeSingle();
     if (checkError) { console.error("Friend request check failed:", checkError); alert("Couldn't check friendship status."); return; }
     if (existing?.status === "accepted") { alert("You're already friends."); return; }
@@ -8129,6 +8615,9 @@ function setupButtons() {
     // --------------------------------------------------------
     // Chat
     // --------------------------------------------------------
+
+    initSettings();
+
 
     get("logoutButton")
         .addEventListener(

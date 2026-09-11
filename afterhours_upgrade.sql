@@ -903,3 +903,12 @@ GRANT EXECUTE ON FUNCTION public.afterhours_notify_friend_request() TO authentic
 REVOKE ALL ON FUNCTION public.afterhours_notify_mentions() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.afterhours_notify_mentions() TO authenticated;
 
+
+-- ============================================================
+-- AFTERHOURS — ACCOUNT SETTINGS PERSISTENCE
+-- ============================================================
+-- Stores user preferences on the profile so settings can follow
+-- the account instead of living only in one browser.
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}'::jsonb;
+
