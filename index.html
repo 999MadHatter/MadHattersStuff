@@ -121,8 +121,14 @@
 
                     <div id="notificationsPanel" class="notifications-panel hidden">
                         <div class="notifications-header">
-                            <span>Notifications</span>
-                            <button id="markNotificationsRead" type="button">Mark all read</button>
+                            <div>
+                                <span>Notifications</span>
+                                <div id="browserNotificationStatus" class="browser-notification-status">Not enabled</div>
+                            </div>
+                            <div class="notifications-header-actions">
+                                <button id="enableBrowserNotifications" class="browser-notification-button" type="button">Enable browser notifications</button>
+                                <button id="markNotificationsRead" type="button">Mark all read</button>
+                            </div>
                         </div>
                         <div id="notificationsList" class="notifications-list"></div>
                     </div>
@@ -544,7 +550,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <!-- APP -->
-    <script src="./app.js?v=unread1?v=message-actions-3"></script>
+    <script src="./app.js?v=notifications-dot-1"></script>
 
     <script>
         document.addEventListener("click", function (event) {

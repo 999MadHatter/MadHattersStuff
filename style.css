@@ -3086,3 +3086,112 @@ button {
 .store-test-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .store-test-actions .secondary-button { min-height:38px; padding:0 12px; font-size:12px; }
 .store-test-status { margin-top:10px; color:#d8b24c; font-size:11px; font-weight:700; }
+
+
+/* ============================================================
+   BROWSER NOTIFICATIONS
+   ============================================================ */
+
+.browser-notification-status {
+    margin-top: 3px;
+    color: #858692;
+    font-size: 11px;
+}
+
+.notifications-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.browser-notification-button {
+    padding: 6px 9px;
+    border: 1px solid #3f404b;
+    border-radius: 7px;
+    background: #202127;
+    color: #e7e7eb;
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.browser-notification-button:hover:not(:disabled) {
+    background: #2a2b33;
+}
+
+.browser-notification-button:disabled {
+    cursor: default;
+    opacity: .55;
+}
+
+/* ============================================================
+   SIDEBAR BOTTOM ALIGNMENT + NOTIFICATION DOT
+   ============================================================ */
+
+/* Keep Messages, Friends, and Notifications on the exact same grid. */
+.messages-dock,
+.friends-dock,
+.notifications-dock {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    padding-top: 4px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.messages-dock {
+    padding-top: 10px;
+}
+
+.messages-dock + .friends-dock,
+.friends-dock + .notifications-dock {
+    border-top: 0;
+}
+
+.messages-dock .messages-button,
+.friends-dock .messages-button,
+.notifications-dock .messages-button {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+/* Small blue unread dot, like a sidebar notification indicator. */
+.notifications-button.notification-dot-visible::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background: #4d9cff;
+    box-shadow: 0 0 0 2px #111219;
+}
+
+/* If the unread count badge is present, place the blue dot just before it. */
+.notifications-button.notification-dot-visible .notification-badge:not(.hidden) {
+    margin-left: auto;
+    margin-right: 17px;
+}
+
+.sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 14px;
+}
+
+.sidebar-bottom .store-dock {
+    width: 100%;
+}
+
+.sidebar-bottom .store-button,
+.sidebar-bottom .profile-button,
+.sidebar-bottom > .secondary-button {
+    min-height: 44px;
+    box-sizing: border-box;
+}

@@ -684,3 +684,222 @@ GRANT EXECUTE ON FUNCTION public.afterhours_edit_message(uuid, text) TO authenti
 DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.dm_messages;
 EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL; END $$;
+
+
+-- ------------------------------------------------------------
+-- Notifications realtime
+-- ------------------------------------------------------------
+-- Browser/in-site notifications depend on INSERT/UPDATE events arriving
+-- immediately over Supabase Realtime.
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_object THEN NULL; END $$;
+
+ALTER TABLE public.notifications REPLICA IDENTITY FULL;
+
+-- Realtime postgres_changes also requires the current user to be allowed
+-- to SELECT their notification rows. Only add the policy if it is missing.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'notifications'
+          AND policyname = 'Users can read their own notifications'
+    ) THEN
+        CREATE POLICY "Users can read their own notifications"
+        ON public.notifications
+        FOR SELECT
+        TO authenticated
+        USING (recipient_id = auth.uid());
+    END IF;
+END $$;
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- ------------------------------------------------------------
+-- Automatic notification creation
+-- ------------------------------------------------------------
+-- These triggers create notification rows when the actual event happens.
+-- Realtime then delivers the INSERT immediately to the recipient's browser.
+
+CREATE OR REPLACE FUNCTION public.afterhours_notify_dm_message()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    recipient uuid;
+    sender_name text;
+BEGIN
+    SELECT CASE
+        WHEN c.participant_one = NEW.sender_id THEN c.participant_two
+        ELSE c.participant_one
+    END
+    INTO recipient
+    FROM public.dm_conversations c
+    WHERE c.id = NEW.conversation_id
+      AND (c.participant_one = NEW.sender_id OR c.participant_two = NEW.sender_id);
+
+    IF recipient IS NULL OR recipient = NEW.sender_id THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT COALESCE(NULLIF(display_name, ''), username, 'Someone')
+    INTO sender_name
+    FROM public.profiles
+    WHERE id = NEW.sender_id;
+
+    INSERT INTO public.notifications (
+        recipient_id,
+        actor_id,
+        type,
+        message,
+        reference_id,
+        read,
+        created_at
+    )
+    VALUES (
+        recipient,
+        NEW.sender_id,
+        'dm',
+        COALESCE(sender_name, 'Someone') || ' sent you a message.',
+        NEW.conversation_id,
+        false,
+        COALESCE(NEW.created_at, now())
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS afterhours_notify_dm_message ON public.dm_messages;
+CREATE TRIGGER afterhours_notify_dm_message
+AFTER INSERT ON public.dm_messages
+FOR EACH ROW
+EXECUTE FUNCTION public.afterhours_notify_dm_message();
+
+
+CREATE OR REPLACE FUNCTION public.afterhours_notify_friend_request()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    sender_name text;
+BEGIN
+    IF NEW.status IS DISTINCT FROM 'pending' THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT COALESCE(NULLIF(display_name, ''), username, 'Someone')
+    INTO sender_name
+    FROM public.profiles
+    WHERE id = NEW.sender_id;
+
+    INSERT INTO public.notifications (
+        recipient_id,
+        actor_id,
+        type,
+        message,
+        reference_id,
+        read,
+        created_at
+    )
+    VALUES (
+        NEW.receiver_id,
+        NEW.sender_id,
+        'friend_request',
+        COALESCE(sender_name, 'Someone') || ' sent you a friend request.',
+        NEW.id,
+        false,
+        COALESCE(NEW.created_at, now())
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS afterhours_notify_friend_request ON public.friend_requests;
+CREATE TRIGGER afterhours_notify_friend_request
+AFTER INSERT ON public.friend_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.afterhours_notify_friend_request();
+
+
+CREATE OR REPLACE FUNCTION public.afterhours_notify_mentions()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    mentioned_username text;
+    mentioned_user uuid;
+    actor_name text;
+    raw_content text;
+BEGIN
+    raw_content := COALESCE(NEW.content, '');
+
+    -- Only scan normal room messages. DM notifications are handled above.
+    IF raw_content = '' OR NEW.user_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT COALESCE(NULLIF(display_name, ''), username, 'Someone')
+    INTO actor_name
+    FROM public.profiles
+    WHERE id = NEW.user_id;
+
+    FOR mentioned_username IN
+        SELECT DISTINCT lower(m[1])
+        FROM regexp_matches(raw_content, '@([A-Za-z0-9_]{1,32})', 'g') AS m
+    LOOP
+        SELECT id INTO mentioned_user
+        FROM public.profiles
+        WHERE lower(username) = mentioned_username
+        LIMIT 1;
+
+        IF mentioned_user IS NOT NULL AND mentioned_user <> NEW.user_id THEN
+            INSERT INTO public.notifications (
+                recipient_id,
+                actor_id,
+                type,
+                message,
+                reference_id,
+                read,
+                created_at
+            )
+            VALUES (
+                mentioned_user,
+                NEW.user_id,
+                'mention',
+                COALESCE(actor_name, 'Someone') || ' mentioned you in #' || COALESCE(NEW.room, 'a room') || '.',
+                NEW.id,
+                false,
+                COALESCE(NEW.created_at, now())
+            );
+        END IF;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS afterhours_notify_mentions ON public.messages;
+CREATE TRIGGER afterhours_notify_mentions
+AFTER INSERT ON public.messages
+FOR EACH ROW
+EXECUTE FUNCTION public.afterhours_notify_mentions();
+
+-- Trigger functions run as SECURITY DEFINER, so notification INSERTs do not
+-- depend on the sender being allowed to write directly to another user's rows.
+REVOKE ALL ON FUNCTION public.afterhours_notify_dm_message() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.afterhours_notify_dm_message() TO authenticated;
+REVOKE ALL ON FUNCTION public.afterhours_notify_friend_request() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.afterhours_notify_friend_request() TO authenticated;
+REVOKE ALL ON FUNCTION public.afterhours_notify_mentions() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.afterhours_notify_mentions() TO authenticated;
+

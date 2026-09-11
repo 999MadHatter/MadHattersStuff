@@ -863,6 +863,115 @@ function closeBroadcastEditor() {
     modal.setAttribute("aria-hidden", "true");
 }
 
+// ============================================================
+// BROWSER NOTIFICATIONS
+// ============================================================
+
+const AFTERHOURS_BROWSER_NOTIFICATION_MUTE_KEY = "afterhours_browser_notifications_muted";
+
+function areBrowserNotificationsMuted() {
+    return localStorage.getItem(AFTERHOURS_BROWSER_NOTIFICATION_MUTE_KEY) === "true";
+}
+
+function setBrowserNotificationsMuted(muted) {
+    localStorage.setItem(AFTERHOURS_BROWSER_NOTIFICATION_MUTE_KEY, muted ? "true" : "false");
+    updateBrowserNotificationUI();
+}
+
+function browserNotificationsSupported() {
+    return typeof window !== "undefined" && "Notification" in window;
+}
+
+function browserNotificationStatusText() {
+    if (!browserNotificationsSupported()) return "Not supported by this browser";
+    if (areBrowserNotificationsMuted()) return "Muted by /mute notifications";
+    if (Notification.permission === "granted") return "Enabled";
+    if (Notification.permission === "denied") return "Blocked by browser";
+    return "Not enabled";
+}
+
+function updateBrowserNotificationUI() {
+    const button = document.getElementById("enableBrowserNotifications");
+    const status = document.getElementById("browserNotificationStatus");
+    if (status) status.textContent = browserNotificationStatusText();
+    if (!button) return;
+
+    const supported = browserNotificationsSupported();
+    const granted = supported && Notification.permission === "granted";
+    const muted = areBrowserNotificationsMuted();
+
+    button.disabled = !supported || (!muted && granted) || Notification.permission === "denied";
+    button.textContent = granted && !muted ? "✓ Browser notifications enabled" : "Enable browser notifications";
+}
+
+async function requestBrowserNotificationPermission() {
+    if (!browserNotificationsSupported()) {
+        alert("Browser notifications are not supported by this browser.");
+        return false;
+    }
+
+    if (Notification.permission === "granted") {
+        setBrowserNotificationsMuted(false);
+        return true;
+    }
+
+    if (Notification.permission === "denied") {
+        alert("Browser notifications are blocked. Allow them for Afterhours in your browser site settings, then try again.");
+        updateBrowserNotificationUI();
+        return false;
+    }
+
+    try {
+        const permission = await Notification.requestPermission();
+        updateBrowserNotificationUI();
+        return permission === "granted";
+    } catch (err) {
+        console.error("Unable to request browser notification permission:", err);
+        return false;
+    }
+}
+
+function showBrowserNotification(notification) {
+    if (!notification || !browserNotificationsSupported()) return;
+    if (areBrowserNotificationsMuted()) return;
+    if (Notification.permission !== "granted") return;
+
+    // Only pop a browser notification when Afterhours is not the active page.
+    // The in-site notification counter still updates while the page is active.
+    if (!document.hidden && document.hasFocus()) return;
+
+    const title = "Afterhours";
+    const body = notification.message || "You have a new notification.";
+    const icon = notificationTypeIcon(notification.type);
+
+    try {
+        const browserNotification = new Notification(`${icon} ${title}`, {
+            body,
+            tag: `afterhours-notification-${notification.id || Date.now()}`,
+            renotify: true
+        });
+
+        browserNotification.onclick = () => {
+            window.focus();
+            if (typeof handleNotificationClick === "function") {
+                handleNotificationClick(notification).catch(() => {});
+            }
+            browserNotification.close();
+        };
+    } catch (err) {
+        console.error("Unable to show browser notification:", err);
+    }
+}
+
+function setupBrowserNotificationControls() {
+    const button = document.getElementById("enableBrowserNotifications");
+    if (button && button.dataset.browserNotificationsBound !== "true") {
+        button.dataset.browserNotificationsBound = "true";
+        button.addEventListener("click", requestBrowserNotificationPermission);
+    }
+    updateBrowserNotificationUI();
+}
+
 function handleChatCommand(text) {
 
     if (!text.startsWith("/")) {
@@ -904,6 +1013,22 @@ function handleChatCommand(text) {
 
     if (command === "/closebroadcast") {
         closeBroadcastEditor();
+        return true;
+    }
+
+    if (command === "/mute" && text.trim().toLowerCase() === "/mute notifications") {
+        setBrowserNotificationsMuted(true);
+        alert("Browser notifications muted. Your Afterhours notification counter will still work.");
+        return true;
+    }
+
+    if (command === "/unmute" && text.trim().toLowerCase() === "/unmute notifications") {
+        setBrowserNotificationsMuted(false);
+        if (browserNotificationsSupported() && Notification.permission === "default") {
+            void requestBrowserNotificationPermission();
+        } else {
+            alert("Browser notifications unmuted.");
+        }
         return true;
     }
 
@@ -8951,6 +9076,7 @@ function renderNotifications(notifications) {
     const notificationButton = document.getElementById("notificationsButton");
     if (notificationButton) {
         notificationButton.classList.toggle("has-unread", unread.length > 0);
+        notificationButton.classList.toggle("notification-dot-visible", unread.length > 0);
         notificationButton.title = unread.length
             ? `${unread.length} unread notification${unread.length === 1 ? "" : "s"}`
             : "Notifications";
@@ -9119,6 +9245,7 @@ function subscribeToNotifications() {
 
     if (liveNotificationsChannel) {
         supabaseClient.removeChannel(liveNotificationsChannel).catch(() => {});
+        liveNotificationsChannel = null;
     }
 
     liveNotificationsChannel = supabaseClient
@@ -9131,18 +9258,28 @@ function subscribeToNotifications() {
         }, payload => {
             if (payload.eventType === "INSERT" && payload.new && !payload.new.read) {
                 const button = document.getElementById("notificationsButton");
-                button?.classList.add("notification-pulse");
+                button?.classList.add("notification-dot-visible", "notification-pulse");
                 setTimeout(() => button?.classList.remove("notification-pulse"), 900);
+                showBrowserNotification(payload.new);
             }
             loadNotifications();
         })
         .subscribe(status => {
-            if (status === "CHANNEL_ERROR") console.error("Notifications realtime channel error.");
+            consoleEvent("Notifications realtime: " + status, status === "CHANNEL_ERROR" ? "error" : "log");
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+                console.warn("Notifications realtime is not connected. Make sure the notifications table is enabled in Supabase Realtime.");
+            }
         });
+
+    // Keep the older cleanup variable pointed at the active channel so logout
+    // removes the actual realtime subscription too.
+    notificationsChannel = liveNotificationsChannel;
 
     return liveNotificationsChannel;
 }
 document.addEventListener("DOMContentLoaded", () => {
+    setupBrowserNotificationControls();
+
     // Store Test controls use one direct binding. This is intentionally
     // independent from setupButtons so unrelated UI initialization cannot
     // make the test purchase controls dead.
